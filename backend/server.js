@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const connectDatabase = require("./config/database");
 
 dotenv.config();
 
@@ -54,6 +55,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 CodeHexa backend running on http://localhost:${PORT}`);
-});
+async function startServer() {
+  try {
+    await connectDatabase();
+
+    app.listen(PORT, () => {
+      console.log(`CodeHexa backend running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("Unable to start backend:", error.message);
+    process.exit(1);
+  }
+}
+
+startServer();

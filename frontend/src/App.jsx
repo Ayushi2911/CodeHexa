@@ -4,13 +4,23 @@ import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import WorkflowBuilder from "./components/WorkflowBuilder";
 import FeatureCard from "./components/FeatureCard";
+import { workflowApi } from "./services/api";
 
 import "./App.css";
 
 function App() {
   const [showHistory, setShowHistory] = useState(false);
-
   const [executionHistory, setExecutionHistory] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState({
+    totalWorkflows: 0,
+    activeWorkflows: 0,
+    draftWorkflows: 0,
+    archivedWorkflows: 0,
+    averageConfidence: 0,
+  });
+  const [templates, setTemplates] = useState([]);
+  const [recentWorkflows, setRecentWorkflows] = useState([]);
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
 
   /*
    * =========================================================
@@ -42,6 +52,35 @@ function App() {
         handleMouseMove
       );
     };
+  }, []);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const [statsResponse, templatesResponse, recentResponse] = await Promise.all([
+          workflowApi.getStats(),
+          workflowApi.getTemplates(),
+          workflowApi.getRecentWorkflows(),
+        ]);
+
+        setDashboardStats(statsResponse.data?.stats || {
+          totalWorkflows: 0,
+          activeWorkflows: 0,
+          draftWorkflows: 0,
+          archivedWorkflows: 0,
+          averageConfidence: 0,
+        });
+
+        setTemplates(templatesResponse.data?.templates || []);
+        setRecentWorkflows(recentResponse.data?.workflows || []);
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      } finally {
+        setLoadingDashboard(false);
+      }
+    };
+
+    loadDashboardData();
   }, []);
 
   /*
@@ -151,6 +190,80 @@ function App() {
 
           </div>
 
+        </section>
+
+        <section className="dashboard-section">
+          <div className="dashboard-header">
+            <div>
+              <p className="tag">LIVE DASHBOARD</p>
+              <h2>Workflow health overview</h2>
+            </div>
+          </div>
+
+          {!loadingDashboard ? (
+            <>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <span>Total workflows</span>
+                  <strong>{dashboardStats.totalWorkflows}</strong>
+                </div>
+                <div className="stat-card">
+                  <span>Active</span>
+                  <strong>{dashboardStats.activeWorkflows}</strong>
+                </div>
+                <div className="stat-card">
+                  <span>Drafts</span>
+                  <strong>{dashboardStats.draftWorkflows}</strong>
+                </div>
+                <div className="stat-card">
+                  <span>Avg. confidence</span>
+                  <strong>{dashboardStats.averageConfidence.toFixed(2)}</strong>
+                </div>
+              </div>
+
+              <div className="dashboard-panels">
+                <div className="dashboard-panel">
+                  <div className="panel-header">
+                    <h3>Workflow templates</h3>
+                  </div>
+
+                  <div className="template-list">
+                    {templates.map((template) => (
+                      <div key={template.id} className="template-card">
+                        <div>
+                          <span>{template.category}</span>
+                          <h4>{template.name}</h4>
+                        </div>
+                        <p>{template.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="dashboard-panel">
+                  <div className="panel-header">
+                    <h3>Recent workflows</h3>
+                  </div>
+
+                  <div className="recent-list">
+                    {recentWorkflows.length > 0 ? recentWorkflows.map((workflow) => (
+                      <div key={workflow.id} className="recent-item">
+                        <div>
+                          <strong>{workflow.name}</strong>
+                          <small>{workflow.status}</small>
+                        </div>
+                        <span>{workflow.version || 1}</span>
+                      </div>
+                    )) : (
+                      <p className="empty-state">No recent workflows available yet.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="loading-state">Loading dashboard data…</div>
+          )}
         </section>
 
       </main>
