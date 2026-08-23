@@ -50,6 +50,12 @@ function Navbar({
           About
         </a>
         <a
+          href="#demo"
+          className={`nav-link ${activeSection === "demo" ? "active" : ""}`}
+        >
+          Demo
+        </a>
+        <a
           href="#help"
           className={`nav-link ${activeSection === "help" ? "active" : ""}`}
         >

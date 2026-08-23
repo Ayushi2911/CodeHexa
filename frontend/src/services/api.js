@@ -18,7 +18,7 @@ export const workflowApi = {
   deleteWorkflow: (id) => api.delete(`/workflows/${id}`),
 
   // Extended endpoints
-  detectWorkflow: (requirement) => api.post("/workflows/detect", { requirement }),
+  detectWorkflow: (requirement, projectName = "sample-flow") => api.post("/workflows/detect", { requirement, projectName }),
   validateWorkflow: (workflow) => api.post("/workflows/validate", { workflow }),
   triggerWorkflow: (workflowId, payload = {}) => api.post(`/workflows/${workflowId}/trigger`, { payload }),
   agentEdit: (workflowId, command, currentWorkflow = null) =>

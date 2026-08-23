@@ -60,6 +60,45 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
     }
   }, [prefillRequirement]);
 
+  const normalizeWorkflowObject = (raw) => {
+    if (!raw) return null;
+    const wf = { ...raw };
+    wf.id = wf.id || wf.workflowId || wf._id || `wf-${Date.now()}`;
+    wf.name = wf.name || wf.workflowName || "Generated Workflow";
+    wf.version = wf.version || 1;
+    wf.status = wf.status || "draft";
+    wf.confidence = wf.confidence || 0.88;
+
+    if (!wf.trigger) {
+      wf.trigger = {
+        id: "trigger-1",
+        type: wf.triggerEvent?.type || "trigger",
+        name: wf.triggerEvent?.schema
+          ? `${wf.triggerEvent.schema.charAt(0).toUpperCase() + wf.triggerEvent.schema.slice(1)} Placed`
+          : "Workflow Started",
+        source: wf.triggerEvent?.schema || "orders"
+      };
+    }
+
+    wf.steps = (wf.steps || []).map((step, index) => {
+      const stepId = step.id || step.stepId || `step-00${index + 1}`;
+      return {
+        ...step,
+        id: stepId,
+        stepId: stepId,
+        name: step.name || step.label || `Step ${index + 1}`,
+        type: step.type || step.actionType || "action",
+        actionType: step.actionType || step.type || "action",
+        status: step.status || "pending",
+        inputMapping: step.inputMapping || {},
+        onSuccess: step.onSuccess,
+        onFailure: step.onFailure,
+      };
+    });
+
+    return wf;
+  };
+
   /*
    * =========================================================
    * GENERATE WORKFLOW
@@ -77,16 +116,17 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
     let generatedWorkflow = null;
 
     try {
-      const response = await workflowApi.detectWorkflow(requirement);
-      if (response?.data?.workflow) {
-        generatedWorkflow = response.data.workflow;
+      const response = await workflowApi.detectWorkflow(requirement, "sample-flow");
+      const detected = response?.data?.data?.[0] || response?.data?.workflow;
+      if (detected) {
+        generatedWorkflow = normalizeWorkflowObject(detected);
       }
     } catch (err) {
       console.warn("Backend detection offline or failed, using local generator", err);
     }
 
     if (!generatedWorkflow) {
-      generatedWorkflow = generateWorkflowFromRequirement(requirement);
+      generatedWorkflow = normalizeWorkflowObject(generateWorkflowFromRequirement(requirement));
     }
 
     setWorkflow(generatedWorkflow);

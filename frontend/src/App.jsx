@@ -5,6 +5,7 @@ import Hero from "./components/Hero";
 import WorkflowBuilder from "./components/WorkflowBuilder";
 import FeatureCard from "./components/FeatureCard";
 import AboutSection from "./components/AboutSection";
+import DemoVideoSection from "./components/DemoVideoSection";
 import HelpSection from "./components/HelpSection";
 import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
@@ -45,10 +46,11 @@ function App() {
       const sections = [
         "home",
         "builder",
-        "templates",
         "features",
         "dashboard",
+        "templates",
         "about",
+        "demo",
         "help",
         "contact",
       ];
@@ -519,6 +521,8 @@ function App() {
         </section>
 
         <AboutSection />
+
+        <DemoVideoSection onOpenBuilder={openBuilder} />
 
         <HelpSection />
 
