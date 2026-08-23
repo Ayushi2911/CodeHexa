@@ -18,8 +18,8 @@ import {
 import WorkflowInspector from "./WorkflowInspector";
 import WorkflowJsonPanel from "./WorkflowJsonPanel";
 
-function WorkflowBuilder({ onHistoryChange }) {
-  const [requirement, setRequirement] = useState("");
+function WorkflowBuilder({ onHistoryChange, prefillRequirement = "" }) {
+  const [requirement, setRequirement] = useState(prefillRequirement);
   const [workflow, setWorkflow] = useState(null);
   const [selectedStep, setSelectedStep] = useState(null);
   const [validationResult, setValidationResult] = useState(null);
@@ -51,6 +51,12 @@ function WorkflowBuilder({ onHistoryChange }) {
       onHistoryChange(executionHistory);
     }
   }, [executionHistory, onHistoryChange]);
+
+  useEffect(() => {
+    if (prefillRequirement) {
+      setRequirement(prefillRequirement);
+    }
+  }, [prefillRequirement]);
 
   /*
    * =========================================================

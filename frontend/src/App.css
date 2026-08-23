@@ -318,6 +318,19 @@ body {
   padding: 16px 18px;
 }
 
+.template-action {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.template-action:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 92, 255, 0.7);
+}
+
 .template-card span {
   display: inline-block;
   margin-bottom: 8px;
@@ -362,6 +375,16 @@ body {
 .loading-state {
   padding: 20px 0;
   color: #9ba6ba;
+}
+
+.demo-banner {
+  background: rgba(124, 92, 255, 0.12);
+  border: 1px solid rgba(124, 92, 255, 0.4);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 22px;
+  color: #dfe3ff;
+  font-size: 14px;
 }
 
 /* ================= RESPONSIVE ================= */

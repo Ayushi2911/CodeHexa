@@ -20,7 +20,40 @@ function App() {
   });
   const [templates, setTemplates] = useState([]);
   const [recentWorkflows, setRecentWorkflows] = useState([]);
+  const [activeTemplate, setActiveTemplate] = useState("");
   const [loadingDashboard, setLoadingDashboard] = useState(true);
+  const [dashboardMode, setDashboardMode] = useState("live");
+
+  const fallbackDashboardStats = {
+    totalWorkflows: 12,
+    activeWorkflows: 5,
+    draftWorkflows: 4,
+    archivedWorkflows: 3,
+    averageConfidence: 0.86,
+  };
+
+  const fallbackTemplates = [
+    {
+      id: "order-processing",
+      name: "Order Processing",
+      description: "Handle order validation, payment processing, and confirmation messaging.",
+      category: "commerce",
+      requirement: "When a new order is placed, validate the order details, process payment, update inventory, and send a confirmation email to the customer.",
+    },
+    {
+      id: "customer-onboarding",
+      name: "Customer Onboarding",
+      description: "Collect user data, verify eligibility, and assign onboarding tasks.",
+      category: "operations",
+      requirement: "When a new customer signs up, verify their information, create an onboarding task, assign a team member, and send a welcome email.",
+    },
+  ];
+
+  const fallbackRecentWorkflows = [
+    { id: "demo-1", name: "Order Processing", status: "active", version: 3 },
+    { id: "demo-2", name: "Customer Onboarding", status: "draft", version: 1 },
+    { id: "demo-3", name: "Incident Response", status: "validated", version: 2 },
+  ];
 
   /*
    * =========================================================
@@ -57,24 +90,37 @@ function App() {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [statsResponse, templatesResponse, recentResponse] = await Promise.all([
+        const [statsResult, templatesResult, recentResult] = await Promise.allSettled([
           workflowApi.getStats(),
           workflowApi.getTemplates(),
           workflowApi.getRecentWorkflows(),
         ]);
 
-        setDashboardStats(statsResponse.data?.stats || {
-          totalWorkflows: 0,
-          activeWorkflows: 0,
-          draftWorkflows: 0,
-          archivedWorkflows: 0,
-          averageConfidence: 0,
-        });
+        const statsData = statsResult.status === "fulfilled"
+          ? statsResult.value.data?.stats || fallbackDashboardStats
+          : fallbackDashboardStats;
 
-        setTemplates(templatesResponse.data?.templates || []);
-        setRecentWorkflows(recentResponse.data?.workflows || []);
+        const templatesData = templatesResult.status === "fulfilled"
+          ? templatesResult.value.data?.templates || fallbackTemplates
+          : fallbackTemplates;
+
+        const recentData = recentResult.status === "fulfilled"
+          ? recentResult.value.data?.workflows || fallbackRecentWorkflows
+          : fallbackRecentWorkflows;
+
+        setDashboardStats(statsData);
+        setTemplates(templatesData);
+        setRecentWorkflows(recentData);
+
+        if (statsResult.status !== "fulfilled" || templatesResult.status !== "fulfilled" || recentResult.status !== "fulfilled") {
+          setDashboardMode("demo");
+        }
       } catch (error) {
         console.error("Failed to load dashboard data", error);
+        setDashboardStats(fallbackDashboardStats);
+        setTemplates(fallbackTemplates);
+        setRecentWorkflows(fallbackRecentWorkflows);
+        setDashboardMode("demo");
       } finally {
         setLoadingDashboard(false);
       }
@@ -115,6 +161,11 @@ function App() {
     setExecutionHistory(history);
   };
 
+  const handleTemplateSelect = (template) => {
+    setActiveTemplate(template.requirement || "");
+    openBuilder();
+  };
+
   return (
     <div className="app">
 
@@ -140,9 +191,8 @@ function App() {
 
 
         <WorkflowBuilder
-          onHistoryChange={
-            handleHistoryChange
-          }
+          onHistoryChange={handleHistoryChange}
+          prefillRequirement={activeTemplate}
         />
 
 
@@ -202,6 +252,12 @@ function App() {
 
           {!loadingDashboard ? (
             <>
+              {dashboardMode === "demo" && (
+                <div className="demo-banner">
+                  Demo mode is active because the backend is not connected right now. The dashboard is showing sample workflow data.
+                </div>
+              )}
+
               <div className="stats-grid">
                 <div className="stat-card">
                   <span>Total workflows</span>
@@ -229,13 +285,18 @@ function App() {
 
                   <div className="template-list">
                     {templates.map((template) => (
-                      <div key={template.id} className="template-card">
+                      <button
+                        key={template.id}
+                        type="button"
+                        className="template-card template-action"
+                        onClick={() => handleTemplateSelect(template)}
+                      >
                         <div>
                           <span>{template.category}</span>
                           <h4>{template.name}</h4>
                         </div>
                         <p>{template.description}</p>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

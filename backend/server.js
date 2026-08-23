@@ -57,10 +57,14 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
   try {
-    await connectDatabase();
+    const dbConnected = await connectDatabase();
+    app.locals.dbConnected = dbConnected;
 
     app.listen(PORT, () => {
       console.log(`CodeHexa backend running on http://localhost:${PORT}`);
+      if (!dbConnected) {
+        console.log("Demo mode enabled: database-backed features will use sample data until MongoDB is configured.");
+      }
     });
   } catch (error) {
     console.error("Unable to start backend:", error.message);

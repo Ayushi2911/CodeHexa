@@ -1,6 +1,37 @@
+const mongoose = require("mongoose");
 const { detectWorkflow } = require("../services/workflowDetector");
 const Workflow = require("../models/Workflow");
 const WorkflowRun = require("../models/WorkflowRun");
+
+const FALLBACK_STATS = {
+  totalWorkflows: 12,
+  activeWorkflows: 5,
+  draftWorkflows: 4,
+  archivedWorkflows: 3,
+  averageConfidence: 0.86,
+  recentRuns: [],
+  runsByStatus: [
+    { _id: "completed", count: 9 },
+    { _id: "running", count: 2 },
+    { _id: "failed", count: 1 },
+  ],
+  sourceStats: [
+    { _id: "detected", count: 7 },
+    { _id: "manual", count: 3 },
+    { _id: "agent", count: 2 },
+  ],
+};
+
+const FALLBACK_RECENT = [
+  { id: "demo-1", name: "Order Processing", status: "active", version: 3 },
+  { id: "demo-2", name: "Customer Onboarding", status: "draft", version: 1 },
+  { id: "demo-3", name: "Incident Response", status: "validated", version: 2 },
+  { id: "demo-4", name: "Leave Approval", status: "archived", version: 4 },
+];
+
+function isDatabaseReady() {
+  return mongoose.connection.readyState === 1;
+}
 
 const VALID_STATUSES = ["draft", "validated", "active", "archived"];
 const VALID_RUN_STATUSES = ["queued", "running", "completed", "failed", "cancelled"];
@@ -368,6 +399,14 @@ async function createRun(req, res) {
 
 async function getStats(req, res) {
   try {
+    if (!isDatabaseReady()) {
+      return res.json({
+        success: true,
+        demoMode: true,
+        stats: FALLBACK_STATS,
+      });
+    }
+
     const [totalWorkflows, activeWorkflows, draftWorkflows, archivedWorkflows, recentRuns] = await Promise.all([
       Workflow.countDocuments(),
       Workflow.countDocuments({ status: "active" }),
@@ -422,24 +461,28 @@ async function getTemplates(req, res) {
         name: "Order Processing",
         description: "Handle order validation, payment processing, and confirmation messaging.",
         category: "commerce",
+        requirement: "When a new order is placed, validate the order details, process payment, update inventory, and send a confirmation email to the customer.",
       },
       {
         id: "customer-onboarding",
         name: "Customer Onboarding",
         description: "Collect user data, verify eligibility, and assign onboarding tasks.",
         category: "operations",
+        requirement: "When a new customer signs up, verify their information, create an onboarding task, assign a team member, and send a welcome email.",
       },
       {
         id: "incident-response",
         name: "Incident Response",
         description: "Capture alerts, triage incidents, and route them to the right responder.",
         category: "support",
+        requirement: "If an incident alert is received, triage the issue, assign it to the support team, notify the on-call engineer, and log the resolution.",
       },
       {
         id: "leave-approval",
         name: "Leave Approval",
         description: "Review leave requests, confirm manager approval, and notify HR.",
         category: "hr",
+        requirement: "When an employee submits a leave request, validate the dates, request manager approval, notify HR, and update the attendance record.",
       },
     ];
 
@@ -458,6 +501,14 @@ async function getTemplates(req, res) {
 
 async function getRecentWorkflows(req, res) {
   try {
+    if (!isDatabaseReady()) {
+      return res.json({
+        success: true,
+        demoMode: true,
+        workflows: FALLBACK_RECENT,
+      });
+    }
+
     const workflows = await Workflow.find().sort({ updatedAt: -1 }).limit(5).lean();
 
     return res.json({
