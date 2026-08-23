@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { generateWorkflowFromRequirement } from "../data/workflowGenerator";
 import { validateWorkflow } from "../utils/workflowValidator";
@@ -18,7 +18,7 @@ import {
 import WorkflowInspector from "./WorkflowInspector";
 import WorkflowJsonPanel from "./WorkflowJsonPanel";
 
-function WorkflowBuilder() {
+function WorkflowBuilder({ onHistoryChange }) {
   const [requirement, setRequirement] = useState("");
   const [workflow, setWorkflow] = useState(null);
   const [selectedStep, setSelectedStep] = useState(null);
@@ -26,20 +26,43 @@ function WorkflowBuilder() {
 
   // AI modification
   const [modificationCommand, setModificationCommand] = useState("");
-  const [modificationMessage, setModificationMessage] = useState("");
+  const [modificationMessage, setModificationMessage] =
+    useState("");
 
   // Execution
   const [executionState, setExecutionState] = useState([]);
-  const [executionMessage, setExecutionMessage] = useState("");
+  const [executionMessage, setExecutionMessage] =
+    useState("");
   const [isExecuting, setIsExecuting] = useState(false);
   const [failStepId, setFailStepId] = useState("");
 
   // Execution history
-  const [executionHistory, setExecutionHistory] = useState([]);
+  const [executionHistory, setExecutionHistory] =
+    useState([]);
+
+  /*
+   * =========================================================
+   * SEND HISTORY TO APP
+   * =========================================================
+   */
+
+  useEffect(() => {
+    if (onHistoryChange) {
+      onHistoryChange(executionHistory);
+    }
+  }, [executionHistory, onHistoryChange]);
+
+  /*
+   * =========================================================
+   * GENERATE WORKFLOW
+   * =========================================================
+   */
 
   const generateWorkflow = () => {
     if (!requirement.trim()) {
-      alert("Please enter a business requirement first.");
+      alert(
+        "Please enter a business requirement first."
+      );
       return;
     }
 
@@ -60,6 +83,12 @@ function WorkflowBuilder() {
     setExecutionMessage("");
   };
 
+  /*
+   * =========================================================
+   * UPDATE WORKFLOW STEP
+   * =========================================================
+   */
+
   const updateStep = (updatedStep) => {
     setWorkflow((currentWorkflow) => ({
       ...currentWorkflow,
@@ -74,14 +103,37 @@ function WorkflowBuilder() {
     setValidationResult(null);
   };
 
+  /*
+   * =========================================================
+   * VALIDATE WORKFLOW
+   * =========================================================
+   */
+
   const handleValidateWorkflow = () => {
+    if (!workflow) {
+      return;
+    }
+
     const result = validateWorkflow(workflow);
+
     setValidationResult(result);
   };
 
+  /*
+   * =========================================================
+   * AI MODIFY WORKFLOW
+   * =========================================================
+   */
+
   const handleModifyWorkflow = () => {
     if (!modificationCommand.trim()) {
-      alert("Please enter a modification command.");
+      alert(
+        "Please enter a modification command."
+      );
+      return;
+    }
+
+    if (!workflow) {
       return;
     }
 
@@ -107,13 +159,71 @@ function WorkflowBuilder() {
     setExecutionMessage("");
   };
 
+  /*
+   * =========================================================
+   * DOWNLOAD WORKFLOW
+   * =========================================================
+   */
+
+  const handleDownloadWorkflow = () => {
+    if (!workflow) {
+      alert("Generate a workflow first.");
+      return;
+    }
+
+    const workflowFile = {
+      name: workflow.name,
+      trigger: workflow.trigger,
+      steps: workflow.steps,
+      downloadedAt: new Date().toISOString()
+    };
+
+    const json = JSON.stringify(
+      workflowFile,
+      null,
+      2
+    );
+
+    const blob = new Blob(
+      [json],
+      {
+        type: "application/json"
+      }
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+      "CodeHexa-Workflow.json";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  };
+
+  /*
+   * =========================================================
+   * RUN WORKFLOW
+   * =========================================================
+   */
+
   const handleRunWorkflow = async () => {
     if (!workflow || isExecuting) {
       return;
     }
 
-    // Validate workflow first
-    const validation = validateWorkflow(workflow);
+    const validation =
+      validateWorkflow(workflow);
 
     setValidationResult(validation);
 
@@ -121,6 +231,7 @@ function WorkflowBuilder() {
       setExecutionMessage(
         "Workflow cannot run until validation issues are fixed."
       );
+
       return;
     }
 
@@ -130,12 +241,10 @@ function WorkflowBuilder() {
       "Workflow execution started."
     );
 
-    // Reset step execution states
     setExecutionState(
       createExecutionState(workflow)
     );
 
-    // Create execution history record
     let currentExecution =
       createExecutionRecord(workflow);
 
@@ -147,16 +256,19 @@ function WorkflowBuilder() {
     const result = await executeWorkflow(
       workflow,
       (stepId, status, attempts) => {
-        // Update visible workflow execution status
+
         setExecutionState((currentState) =>
           currentState.map((item) =>
             item.stepId === stepId
-              ? { ...item, status, attempts }
+              ? {
+                  ...item,
+                  status,
+                  attempts
+                }
               : item
           )
         );
 
-        // Update execution history record
         currentExecution =
           updateExecutionStep(
             currentExecution,
@@ -166,48 +278,73 @@ function WorkflowBuilder() {
 
         setExecutionHistory((history) =>
           history.map((execution) =>
-            execution.id === currentExecution.id
+            execution.id ===
+            currentExecution.id
               ? currentExecution
               : execution
           )
-              );
-  },
-  {
-    failStepId: failStepId || null,
-    maxRetries: 1
-  }
-);
-        
+        );
+      },
+      {
+        failStepId:
+          failStepId || null,
 
-    // Mark execution as completed
+        maxRetries: 1
+      }
+    );
+
     currentExecution =
-      completeExecution(currentExecution);
+      completeExecution(
+        currentExecution
+      );
 
     setExecutionHistory((history) =>
       history.map((execution) =>
-        execution.id === currentExecution.id
+        execution.id ===
+        currentExecution.id
           ? currentExecution
           : execution
       )
     );
 
-    setExecutionMessage(result.message);
+    setExecutionMessage(
+      result.message
+    );
 
     setIsExecuting(false);
   };
 
+  /*
+   * =========================================================
+   * STEP STATUS
+   * =========================================================
+   */
+
   const getStepStatus = (stepId) => {
     return (
       executionState.find(
-        (item) => item.stepId === stepId
+        (item) =>
+          item.stepId === stepId
       )?.status || "pending"
     );
   };
 
+  /*
+   * =========================================================
+   * UI
+   * =========================================================
+   */
+
   return (
-    <section className="builder-section" id="builder">
+    <section
+      className="builder-section"
+      id="builder"
+    >
+
       <div className="builder-header">
+
         <div>
+
           <p className="tag">
             WORKFLOW STUDIO
           </p>
@@ -217,19 +354,27 @@ function WorkflowBuilder() {
           </h2>
 
           <p>
-            Enter a business requirement, generate a workflow,
-            modify it, validate it, and execute it step-by-step.
+            Enter a business requirement,
+            generate a workflow, modify it,
+            validate it, and execute it
+            step-by-step.
           </p>
+
         </div>
+
       </div>
 
-      {/* Requirement Input */}
+
+      {/* REQUIREMENT INPUT */}
 
       <div className="requirement-box">
+
         <textarea
           value={requirement}
           onChange={(event) =>
-            setRequirement(event.target.value)
+            setRequirement(
+              event.target.value
+            )
           }
           placeholder="Example: When an order is placed, create an invoice, update inventory, and send a confirmation to the customer."
         />
@@ -240,15 +385,21 @@ function WorkflowBuilder() {
         >
           Generate Workflow
         </button>
+
       </div>
+
 
       {workflow && (
         <>
-          {/* AI Workflow Editor */}
+
+          {/* AI WORKFLOW EDITOR */}
 
           <div className="ai-command-box">
+
             <div className="ai-command-header">
+
               <div>
+
                 <p className="inspector-label">
                   AI WORKFLOW EDITOR
                 </p>
@@ -256,18 +407,24 @@ function WorkflowBuilder() {
                 <h3>
                   Modify your workflow
                 </h3>
+
               </div>
 
               <span className="ai-badge">
                 AI
               </span>
+
             </div>
 
+
             <p className="ai-command-description">
-              Describe the change you want to make.
+              Describe the change you want
+              to make.
             </p>
 
+
             <div className="ai-command-input">
+
               <input
                 type="text"
                 value={modificationCommand}
@@ -281,21 +438,29 @@ function WorkflowBuilder() {
 
               <button
                 className="modify-btn"
-                onClick={handleModifyWorkflow}
+                onClick={
+                  handleModifyWorkflow
+                }
                 disabled={isExecuting}
               >
                 Apply Change
               </button>
+
             </div>
+
 
             {modificationMessage && (
               <div className="modification-message">
-                ✦ {modificationMessage}
+                {modificationMessage}
               </div>
             )}
 
+
             <div className="command-examples">
-              <span>Try:</span>
+
+              <span>
+                Try:
+              </span>
 
               <button
                 disabled={isExecuting}
@@ -329,15 +494,22 @@ function WorkflowBuilder() {
               >
                 Remove invoice
               </button>
+
             </div>
+
           </div>
 
-          {/* Workflow Workspace */}
+
+          {/* WORKFLOW WORKSPACE */}
 
           <div className="workflow-workspace">
+
             <div className="workflow-preview">
+
               <div className="workflow-preview-header">
+
                 <div>
+
                   <h3>
                     {workflow.name}
                   </h3>
@@ -345,53 +517,82 @@ function WorkflowBuilder() {
                   <span>
                     {workflow.steps.length} steps
                   </span>
+
                 </div>
 
+
                 <div className="workflow-actions">
+
                   <button
                     className="validate-btn"
-                    onClick={handleValidateWorkflow}
+                    onClick={
+                      handleValidateWorkflow
+                    }
                     disabled={isExecuting}
                   >
                     Validate Workflow
                   </button>
 
+
                   <div className="failure-simulation">
-  <label htmlFor="failure-step">
-    Demo Failure Simulation
-  </label>
 
-  <select
-    id="failure-step"
-    value={failStepId}
-    onChange={(event) => setFailStepId(event.target.value)}
-    disabled={isExecuting}
-  >
-    <option value="">No failure — Normal execution</option>
+                    <label htmlFor="failure-step">
+                      Demo Failure Simulation
+                    </label>
 
-    {workflow.steps.map((step) => (
-      <option key={step.id} value={step.id}>
-        Fail once: {step.name}
-      </option>
-    ))}
-  </select>
-</div>
+                    <select
+                      id="failure-step"
+                      value={failStepId}
+                      onChange={(event) =>
+                        setFailStepId(
+                          event.target.value
+                        )
+                      }
+                      disabled={isExecuting}
+                    >
+
+                      <option value="">
+                        No failure — Normal execution
+                      </option>
+
+                      {workflow.steps.map(
+                        (step) => (
+                          <option
+                            key={step.id}
+                            value={step.id}
+                          >
+                            Fail once:{" "}
+                            {step.name}
+                          </option>
+                        )
+                      )}
+
+                    </select>
+
+                  </div>
+
 
                   <button
                     className="run-workflow-btn"
-                    onClick={handleRunWorkflow}
+                    onClick={
+                      handleRunWorkflow
+                    }
                     disabled={isExecuting}
                   >
                     {isExecuting
                       ? "Running..."
                       : "Run Workflow"}
                   </button>
+
                 </div>
+
               </div>
 
-              {/* Validation Result */}
+
+              {/* VALIDATION */}
 
               {validationResult && (
+
                 <div
                   className={`validation-result ${
                     validationResult.isValid
@@ -399,18 +600,29 @@ function WorkflowBuilder() {
                       : "validation-error"
                   }`}
                 >
+
                   {validationResult.isValid ? (
+
                     <p>
-                      ✓ Workflow is valid and ready to run.
+                      ✓ Workflow is valid and
+                      ready to run.
                     </p>
+
                   ) : (
+
                     <>
+
                       <p className="validation-title">
                         Workflow has{" "}
-                        {validationResult.errors.length} issue(s):
+                        {
+                          validationResult
+                            .errors.length
+                        }{" "}
+                        issue(s):
                       </p>
 
                       <ul>
+
                         {validationResult.errors.map(
                           (error) => (
                             <li key={error}>
@@ -418,27 +630,37 @@ function WorkflowBuilder() {
                             </li>
                           )
                         )}
+
                       </ul>
+
                     </>
+
                   )}
+
                 </div>
+
               )}
 
-              {/* Execution Message */}
+
+              {/* EXECUTION MESSAGE */}
 
               {executionMessage && (
+
                 <div className="execution-message">
-                  ⚡ {executionMessage}
+                  {executionMessage}
                 </div>
+
               )}
 
-              {/* Workflow Steps */}
+
+              {/* WORKFLOW STEPS */}
 
               <div className="workflow-steps">
-                {/* Trigger */}
 
                 <div className="workflow-step-wrapper">
+
                   <div className="workflow-step trigger-step">
+
                     <span className="step-type">
                       TRIGGER
                     </span>
@@ -446,80 +668,176 @@ function WorkflowBuilder() {
                     <h4>
                       {workflow.trigger.name}
                     </h4>
+
                   </div>
 
+
                   {workflow.steps.length > 0 && (
+
                     <div className="step-arrow">
                       ↓
                     </div>
+
                   )}
+
                 </div>
 
-                {/* Steps */}
 
-                {workflow.steps.map((step, index) => {
-                  const stepStatus =
-                    getStepStatus(step.id);
+                {workflow.steps.map(
+                  (step, index) => {
 
-                  return (
-                    <div
-                      className="workflow-step-wrapper"
-                      key={step.id}
-                    >
-                      <button
-                        className={`workflow-step clickable-step status-${stepStatus} ${
-                          selectedStep?.id === step.id
-                            ? "selected-step"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          setSelectedStep(step)
-                        }
-                        disabled={isExecuting}
+                    const stepStatus =
+                      getStepStatus(
+                        step.id
+                      );
+
+                    return (
+
+                      <div
+                        className="workflow-step-wrapper"
+                        key={step.id}
                       >
-                        <span className="step-type">
-                          {step.type.toUpperCase()}
-                        </span>
 
-                        <h4>
-                          {step.name}
-                        </h4>
+                        <button
+                          className={`workflow-step clickable-step status-${stepStatus} ${
+                            selectedStep?.id ===
+                            step.id
+                              ? "selected-step"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            setSelectedStep(
+                              step
+                            )
+                          }
+                          disabled={
+                            isExecuting
+                          }
+                        >
 
-                        <span className="execution-status">
-                          {stepStatus.toUpperCase()}
-                        </span>
-                      </button>
+                          <span className="step-type">
+                            {step.type.toUpperCase()}
+                          </span>
 
-                      {index <
-                        workflow.steps.length - 1 && (
-                        <div className="step-arrow">
-                          ↓
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                          <h4>
+                            {step.name}
+                          </h4>
+
+                          <span className="execution-status">
+                            {stepStatus.toUpperCase()}
+                          </span>
+
+                        </button>
+
+
+                        {index <
+                          workflow.steps.length -
+                            1 && (
+
+                          <div className="step-arrow">
+                            ↓
+                          </div>
+
+                        )}
+
+                      </div>
+
+                    );
+                  }
+                )}
+
               </div>
+
             </div>
 
+
+            {/* INSPECTOR */}
+
             <WorkflowInspector
-              selectedStep={selectedStep}
-              onUpdateStep={updateStep}
+              selectedStep={
+                selectedStep
+              }
+              onUpdateStep={
+                updateStep
+              }
             />
+
           </div>
 
-          {/* Workflow JSON */}
+
+          {/* WORKFLOW JSON */}
 
           <WorkflowJsonPanel
             workflow={workflow}
           />
 
-          {/* Execution History */}
+
+          {/* =================================================
+              WORKFLOW EXPORT / DOWNLOAD
+              ================================================= */}
+
+          <div className="workflow-download-section">
+
+            <div className="workflow-download-info">
+
+              <span className="download-label">
+                WORKFLOW EXPORT
+              </span>
+
+              <h3>
+                Download Workflow
+              </h3>
+
+            </div>
+
+
+            <button
+              className="workflow-download-btn"
+              onClick={
+                handleDownloadWorkflow
+              }
+              type="button"
+              aria-label="Download Workflow"
+            >
+
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+
+                <path d="M12 3v11" />
+
+                <path d="M7 10l5 5 5-5" />
+
+                <path d="M5 20h14" />
+
+              </svg>
+
+              <span>
+                Download
+              </span>
+
+            </button>
+
+          </div>
+
+
+          {/* EXECUTION HISTORY */}
 
           {executionHistory.length > 0 && (
+
             <section className="execution-history">
+
               <div className="execution-history-header">
+
                 <div>
+
                   <p className="inspector-label">
                     EXECUTION HISTORY
                   </p>
@@ -527,86 +845,151 @@ function WorkflowBuilder() {
                   <h3>
                     Workflow Runs
                   </h3>
+
                 </div>
 
+
                 <span>
-                  {executionHistory.length} run
-                  {executionHistory.length > 1
+                  {executionHistory.length}{" "}
+                  run
+                  {executionHistory.length >
+                  1
                     ? "s"
                     : ""}
                 </span>
+
               </div>
 
+
               <div className="execution-history-list">
+
                 {executionHistory.map(
-                  (execution, index) => (
+                  (
+                    execution,
+                    index
+                  ) => (
+
                     <div
                       className="execution-history-card"
-                      key={execution.id}
+                      key={
+                        execution.id
+                      }
                     >
+
                       <div className="execution-card-header">
+
                         <div>
+
                           <h4>
                             Run #
-                            {executionHistory.length - index}
+                            {
+                              executionHistory.length -
+                              index
+                            }
                           </h4>
 
                           <p>
-                            {execution.workflowName}
+                            {
+                              execution.workflowName
+                            }
                           </p>
+
                         </div>
+
 
                         <span
                           className={`history-status history-${execution.status}`}
                         >
-                          {execution.status.toUpperCase()}
+                          {
+                            execution.status
+                          }
                         </span>
+
                       </div>
+
 
                       <div className="execution-times">
+
                         <span>
-                          Started: {execution.startedAt}
+                          Started:{" "}
+                          {
+                            execution.startedAt
+                          }
                         </span>
 
+
                         {execution.completedAt && (
+
                           <span>
-                            Completed: {execution.completedAt}
+                            Completed:{" "}
+                            {
+                              execution.completedAt
+                            }
                           </span>
+
                         )}
+
                       </div>
+
 
                       <div className="execution-step-list">
-                        {execution.steps.map((step) => (
-                          <div
-                            className="execution-history-step"
-                            key={step.stepId}
-                          >
-                            <span>
-                              {step.status === "success"
-                                ? "✓"
-                                : step.status === "running"
-                                ? "●"
-                                : "○"}
-                            </span>
 
-                            <span>
-                              {step.stepName}
-                            </span>
+                        {execution.steps.map(
+                          (step) => (
 
-                            <small>
-                              {step.status.toUpperCase()}
-                            </small>
-                          </div>
-                        ))}
+                            <div
+                              className="execution-history-step"
+                              key={
+                                step.stepId
+                              }
+                            >
+
+                              <span>
+                                {step.status ===
+                                "success"
+                                  ? "✓"
+                                  : step.status ===
+                                    "running"
+                                  ? "●"
+                                  : "○"}
+                              </span>
+
+
+                              <span>
+                                {
+                                  step.stepName
+                                }
+                              </span>
+
+
+                              <small>
+                                {
+                                  step.status
+                                }
+                              </small>
+
+                            </div>
+
+                          )
+                        )}
+
                       </div>
+
                     </div>
+
                   )
                 )}
+
               </div>
+
             </section>
+
           )}
+
         </>
+
       )}
+
     </section>
   );
 }

@@ -1,5 +1,62 @@
 import { useEffect, useState } from "react";
 
+function ArrowRightIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m5 12 4 4L19 6" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10.3 3.9 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
+
 function WorkflowInspector({ selectedStep, onUpdateStep }) {
   const [formData, setFormData] = useState({
     name: "",
@@ -11,10 +68,10 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
   useEffect(() => {
     if (selectedStep) {
       setFormData({
-        name: selectedStep.name,
-        target: selectedStep.target,
-        onSuccess: selectedStep.onSuccess,
-        onFailure: selectedStep.onFailure
+        name: selectedStep.name || "",
+        target: selectedStep.target || "",
+        onSuccess: selectedStep.onSuccess || "",
+        onFailure: selectedStep.onFailure || ""
       });
     }
   }, [selectedStep]);
@@ -22,8 +79,37 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
   if (!selectedStep) {
     return (
       <aside className="workflow-inspector empty-inspector">
-        <h3>Step Inspector</h3>
-        <p>Click a workflow step to view and edit its details.</p>
+        <div className="empty-inspector-icon">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="4" y="4" width="16" height="16" rx="3" />
+            <path d="M8 9h8" />
+            <path d="M8 13h5" />
+            <path d="M8 17h3" />
+          </svg>
+        </div>
+
+        <p className="inspector-label">STEP INSPECTOR</p>
+
+        <h3>Select a workflow step</h3>
+
+        <p>
+          Choose any step from the workflow to inspect its configuration,
+          mappings, and execution paths.
+        </p>
+
+        <div className="inspector-hint">
+          <span className="hint-dot" />
+          Click a step to begin
+        </div>
       </aside>
     );
   }
@@ -46,85 +132,158 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
 
   return (
     <aside className="workflow-inspector">
+      {/* Header */}
       <div className="inspector-header">
-        <p className="inspector-label">STEP INSPECTOR</p>
-        <h3>{selectedStep.name}</h3>
-      </div>
+        <div className="inspector-title-row">
+          <div>
+            <p className="inspector-label">STEP INSPECTOR</p>
+            <h3>{selectedStep.name}</h3>
+          </div>
 
-      <div className="inspector-section">
-        <label>Type</label>
-        <p>{selectedStep.type}</p>
-      </div>
+          <div className="inspector-step-number">
+            {selectedStep.id?.toString().slice(-2) || "01"}
+          </div>
+        </div>
 
-      <div className="inspector-section">
-        <label>Action Type</label>
-        <p>{selectedStep.actionType}</p>
-      </div>
+        <div className="inspector-meta">
+          <span className="meta-pill">
+            {selectedStep.type || "STEP"}
+          </span>
 
-      <div className="inspector-section">
-        <label htmlFor="step-name">Step Name</label>
-
-        <input
-          id="step-name"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-        />
-      </div>
-
-      <div className="inspector-section">
-        <label htmlFor="step-target">Target</label>
-
-        <input
-          id="step-target"
-          name="target"
-          value={formData.target}
-          onChange={handleChange}
-        />
-      </div>
-
-      <div className="inspector-section">
-        <label>Input Mapping</label>
-
-        <div className="mapping-list">
-          {Object.entries(selectedStep.inputMapping || {}).map(
-            ([key, value]) => (
-              <div className="mapping-item" key={key}>
-                <span>{key}</span>
-                <span className="mapping-arrow">→</span>
-                <code>{value}</code>
-              </div>
-            )
+          {selectedStep.actionType && (
+            <span className="meta-pill muted">
+              {selectedStep.actionType}
+            </span>
           )}
         </div>
       </div>
 
-      <div className="execution-paths">
-        <div className="path">
-          <label htmlFor="on-success">On Success</label>
+      {/* Configuration */}
+      <div className="inspector-section">
+        <div className="section-heading">
+          <span className="section-line" />
+          <span>CONFIGURATION</span>
+        </div>
+
+        <div className="inspector-field">
+          <label htmlFor="step-name">Step Name</label>
 
           <input
-            id="on-success"
-            name="onSuccess"
-            value={formData.onSuccess}
+            id="step-name"
+            name="name"
+            value={formData.name}
             onChange={handleChange}
+            placeholder="Enter step name"
           />
         </div>
 
-        <div className="path">
-          <label htmlFor="on-failure">On Failure</label>
+        <div className="inspector-field">
+          <label htmlFor="step-target">Target</label>
 
           <input
-            id="on-failure"
-            name="onFailure"
-            value={formData.onFailure}
+            id="step-target"
+            name="target"
+            value={formData.target}
             onChange={handleChange}
+            placeholder="Target service or resource"
           />
         </div>
       </div>
 
+      {/* Input Mapping */}
+      <div className="inspector-section">
+        <div className="section-heading">
+          <span className="section-line" />
+          <span>INPUT MAPPING</span>
+        </div>
+
+        {Object.entries(selectedStep.inputMapping || {}).length > 0 ? (
+          <div className="mapping-list">
+            {Object.entries(selectedStep.inputMapping || {}).map(
+              ([key, value]) => (
+                <div className="mapping-item" key={key}>
+                  <div className="mapping-source">
+                    <span>{key}</span>
+                  </div>
+
+                  <div className="mapping-arrow">
+                    <ArrowRightIcon />
+                  </div>
+
+                  <code>{value}</code>
+                </div>
+              )
+            )}
+          </div>
+        ) : (
+          <div className="mapping-empty">
+            No input mappings configured for this step.
+          </div>
+        )}
+      </div>
+
+      {/* Execution Paths */}
+      <div className="inspector-section">
+        <div className="section-heading">
+          <span className="section-line" />
+          <span>EXECUTION PATHS</span>
+        </div>
+
+        <div className="execution-path-card success-path">
+          <div className="path-icon">
+            <CheckIcon />
+          </div>
+
+          <div className="path-content">
+            <label htmlFor="on-success">On Success</label>
+
+            <input
+              id="on-success"
+              name="onSuccess"
+              value={formData.onSuccess}
+              onChange={handleChange}
+              placeholder="Next step"
+            />
+          </div>
+        </div>
+
+        <div className="execution-path-card failure-path">
+          <div className="path-icon">
+            <AlertIcon />
+          </div>
+
+          <div className="path-content">
+            <label htmlFor="on-failure">On Failure</label>
+
+            <input
+              id="on-failure"
+              name="onFailure"
+              value={formData.onFailure}
+              onChange={handleChange}
+              placeholder="Failure handler"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Save */}
       <button className="save-step-btn" onClick={handleSave}>
-        Save Changes
+        <span>Save Changes</span>
+
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+          <path d="M17 21v-8H7v8" />
+          <path d="M7 3v5h8" />
+        </svg>
       </button>
     </aside>
   );
