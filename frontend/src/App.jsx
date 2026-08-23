@@ -97,15 +97,15 @@ function App() {
         ]);
 
         const statsData = statsResult.status === "fulfilled"
-          ? statsResult.value.data?.stats || fallbackDashboardStats
+          ? (statsResult.value.data?.stats || statsResult.value.data || fallbackDashboardStats)
           : fallbackDashboardStats;
 
         const templatesData = templatesResult.status === "fulfilled"
-          ? templatesResult.value.data?.templates || fallbackTemplates
+          ? (templatesResult.value.data?.templates || templatesResult.value.data || fallbackTemplates)
           : fallbackTemplates;
 
         const recentData = recentResult.status === "fulfilled"
-          ? recentResult.value.data?.workflows || fallbackRecentWorkflows
+          ? (recentResult.value.data?.workflows || recentResult.value.data || fallbackRecentWorkflows)
           : fallbackRecentWorkflows;
 
         setDashboardStats(statsData);
