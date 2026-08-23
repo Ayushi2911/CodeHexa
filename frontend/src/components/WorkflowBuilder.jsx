@@ -18,6 +18,7 @@ import {
 
 import WorkflowInspector from "./WorkflowInspector";
 import WorkflowJsonPanel from "./WorkflowJsonPanel";
+import WorkflowDiagram from "./workflow/WorkflowDiagram";
 
 function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowChange }) {
   const [requirement, setRequirement] = useState(prefillRequirement);
@@ -691,103 +692,18 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
               )}
 
 
-              {/* WORKFLOW STEPS */}
+              <WorkflowDiagram
+  workflow={workflow}
+  selectedStepId={selectedStep?.id}
+  onSelectStep={(stepId) => {
+    const step = workflow.steps.find(
+      (step) => step.id === stepId
+    );
 
-              <div className="workflow-steps">
-
-                <div className="workflow-step-wrapper">
-
-                  <div className="workflow-step trigger-step">
-
-                    <span className="step-type">
-                      TRIGGER
-                    </span>
-
-                    <h4>
-                      {workflow.trigger.name}
-                    </h4>
-
-                  </div>
-
-
-                  {workflow.steps.length > 0 && (
-
-                    <div className="step-arrow">
-                      ↓
-                    </div>
-
-                  )}
-
-                </div>
-
-
-                {workflow.steps.map(
-                  (step, index) => {
-
-                    const stepStatus =
-                      getStepStatus(
-                        step.id
-                      );
-
-                    return (
-
-                      <div
-                        className="workflow-step-wrapper"
-                        key={step.id}
-                      >
-
-                        <button
-                          className={`workflow-step clickable-step status-${stepStatus} ${
-                            selectedStep?.id ===
-                            step.id
-                              ? "selected-step"
-                              : ""
-                          }`}
-                          onClick={() =>
-                            setSelectedStep(
-                              step
-                            )
-                          }
-                          disabled={
-                            isExecuting
-                          }
-                        >
-
-                          <span className="step-type">
-                            {step.type.toUpperCase()}
-                          </span>
-
-                          <h4>
-                            {step.name}
-                          </h4>
-
-                          <span className="execution-status">
-                            {stepStatus.toUpperCase()}
-                          </span>
-
-                        </button>
-
-
-                        {index <
-                          workflow.steps.length -
-                            1 && (
-
-                          <div className="step-arrow">
-                            ↓
-                          </div>
-
-                        )}
-
-                      </div>
-
-                    );
-                  }
-                )}
-
-              </div>
-
-            </div>
-
+    setSelectedStep(step || null);
+  }}
+/>
+</div>
 
             {/* INSPECTOR */}
 

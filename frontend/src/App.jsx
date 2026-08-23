@@ -296,29 +296,42 @@ function App() {
 
 
           <div className="feature-grid">
+  <FeatureCard
+    icon="✦"
+    title="AI Workflow Builder"
+    description="Turn natural-language requirements into structured, intelligent workflows."
+  />
 
-            <FeatureCard
-              icon="⌁"
-              title="Requirement Detection"
-              description="Convert natural-language business requirements into structured workflow definitions."
-            />
+  <FeatureCard
+    icon="◇"
+    title="Visual Workflow Editor"
+    description="Design and refine every workflow step through a clear visual interface."
+  />
 
+  <FeatureCard
+    icon="✓"
+    title="Smart Validation"
+    description="Catch workflow issues early with intelligent validation before execution."
+  />
 
-            <FeatureCard
-              icon="◈"
-              title="Visual Workflow Editing"
-              description="Inspect and modify workflow steps, actions, mappings, and execution paths."
-            />
+  <FeatureCard
+    icon="⌘"
+    title="Easy Integrations"
+    description="Connect your workflows to services, systems, and business tools with ease."
+  />
 
+  <FeatureCard
+    icon="◈"
+    title="Secure & Reliable"
+    description="Build dependable automation with controlled execution and predictable flows."
+  />
 
-            <FeatureCard
-              icon="✦"
-              title="AI-Assisted Changes"
-              description="Describe workflow changes in natural language and review the proposed updates."
-            />
-
-          </div>
-
+  <FeatureCard
+    icon="↗"
+    title="Analytics & Insights"
+    description="Understand workflow activity and execution outcomes through useful insights."
+  />
+</div>
         </section>
 
         <section className="dashboard-section">

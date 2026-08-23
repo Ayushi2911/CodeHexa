@@ -140,22 +140,14 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
             <h3>{selectedStep.name}</h3>
           </div>
 
-          <div className="inspector-step-number">
-            {selectedStep.id?.toString().slice(-2) || "01"}
-          </div>
+          
         </div>
 
         <div className="inspector-meta">
-          <span className="meta-pill">
-            {selectedStep.type || "STEP"}
-          </span>
-
-          {selectedStep.actionType && (
-            <span className="meta-pill muted">
-              {selectedStep.actionType}
-            </span>
-          )}
-        </div>
+  <span className="meta-pill">
+    {selectedStep.type || "STEP"}
+  </span>
+</div>
       </div>
 
       {/* Configuration */}
