@@ -7,6 +7,7 @@ export function generateWorkflowFromRequirement(requirement) {
     name: "Generated Workflow",
     version: 1,
     status: "draft",
+    confidence: 0.86,
 
     trigger: {
       id: "trigger-1",

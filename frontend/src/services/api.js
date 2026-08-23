@@ -13,4 +13,7 @@ export const workflowApi = {
   getRecentWorkflows: () => api.get("/workflows/recent"),
   getWorkflows: (params = {}) => api.get("/workflows", { params }),
   createWorkflow: (payload) => api.post("/workflows", payload),
+  updateWorkflow: (id, payload) => api.put(`/workflows/${id}`, payload),
+  updateWorkflowStatus: (id, status) => api.patch(`/workflows/${id}/status`, { status }),
+  deleteWorkflow: (id) => api.delete(`/workflows/${id}`),
 };

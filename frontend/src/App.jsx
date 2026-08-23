@@ -24,6 +24,94 @@ function App() {
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardMode, setDashboardMode] = useState("live");
 
+  const normalizeRecentWorkflow = (workflow, fallbackStatus = "draft") => {
+    if (!workflow) return null;
+
+    return {
+      id: workflow.id || workflow._id || `local-${Date.now()}-${Math.random()}`,
+      name: workflow.name || workflow.title || "Untitled workflow",
+      status: workflow.status || fallbackStatus,
+      version: workflow.version || 1,
+      updatedAt: workflow.updatedAt || new Date().toISOString(),
+      confidence: workflow.confidence || 0,
+    };
+  };
+
+  const updateDashboardFromWorkflow = (workflow, statusOverride = null) => {
+    if (!workflow) return;
+
+    const nextItem = normalizeRecentWorkflow(
+      workflow,
+      statusOverride || workflow.status || "draft"
+    );
+
+    setRecentWorkflows((currentItems) => {
+      const deduped = currentItems.filter((item) => item.id !== nextItem.id);
+      const merged = [nextItem, ...deduped].slice(0, 5);
+
+      const total = Math.max(merged.length, 1);
+      const active = merged.filter((item) => item.status === "active").length;
+      const draft = merged.filter((item) => item.status === "draft").length;
+      const archived = merged.filter((item) => item.status === "archived").length;
+      const averageConfidence = merged.length
+        ? Number((merged.reduce((sum, item) => sum + (item.confidence || 0), 0) / merged.length).toFixed(2))
+        : 0;
+
+      setDashboardStats((previousStats) => ({
+        ...previousStats,
+        totalWorkflows: total,
+        activeWorkflows: active,
+        draftWorkflows: draft,
+        archivedWorkflows: archived,
+        averageConfidence,
+      }));
+
+      return merged;
+    });
+
+    setDashboardMode("live");
+  };
+
+  const refreshDashboardData = async () => {
+    try {
+      const [statsResult, templatesResult, recentResult] = await Promise.allSettled([
+        workflowApi.getStats(),
+        workflowApi.getTemplates(),
+        workflowApi.getRecentWorkflows(),
+      ]);
+
+      const statsData = statsResult.status === "fulfilled"
+        ? (statsResult.value.data?.stats || statsResult.value.data || fallbackDashboardStats)
+        : fallbackDashboardStats;
+
+      const templatesData = templatesResult.status === "fulfilled"
+        ? (templatesResult.value.data?.templates || templatesResult.value.data || fallbackTemplates)
+        : fallbackTemplates;
+
+      const recentData = recentResult.status === "fulfilled"
+        ? (recentResult.value.data?.workflows || recentResult.value.data || fallbackRecentWorkflows)
+        : fallbackRecentWorkflows;
+
+      setDashboardStats(statsData);
+      setTemplates(templatesData);
+      setRecentWorkflows(Array.isArray(recentData) ? recentData : fallbackRecentWorkflows);
+
+      if (statsResult.status !== "fulfilled" || templatesResult.status !== "fulfilled" || recentResult.status !== "fulfilled") {
+        setDashboardMode("demo");
+      } else {
+        setDashboardMode("live");
+      }
+    } catch (error) {
+      console.error("Failed to load dashboard data", error);
+      setDashboardStats(fallbackDashboardStats);
+      setTemplates(fallbackTemplates);
+      setRecentWorkflows(fallbackRecentWorkflows);
+      setDashboardMode("demo");
+    } finally {
+      setLoadingDashboard(false);
+    }
+  };
+
   const fallbackDashboardStats = {
     totalWorkflows: 12,
     activeWorkflows: 5,
@@ -88,45 +176,21 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const [statsResult, templatesResult, recentResult] = await Promise.allSettled([
-          workflowApi.getStats(),
-          workflowApi.getTemplates(),
-          workflowApi.getRecentWorkflows(),
-        ]);
+    refreshDashboardData();
 
-        const statsData = statsResult.status === "fulfilled"
-          ? (statsResult.value.data?.stats || statsResult.value.data || fallbackDashboardStats)
-          : fallbackDashboardStats;
-
-        const templatesData = templatesResult.status === "fulfilled"
-          ? (templatesResult.value.data?.templates || templatesResult.value.data || fallbackTemplates)
-          : fallbackTemplates;
-
-        const recentData = recentResult.status === "fulfilled"
-          ? (recentResult.value.data?.workflows || recentResult.value.data || fallbackRecentWorkflows)
-          : fallbackRecentWorkflows;
-
-        setDashboardStats(statsData);
-        setTemplates(templatesData);
-        setRecentWorkflows(recentData);
-
-        if (statsResult.status !== "fulfilled" || templatesResult.status !== "fulfilled" || recentResult.status !== "fulfilled") {
-          setDashboardMode("demo");
-        }
-      } catch (error) {
-        console.error("Failed to load dashboard data", error);
-        setDashboardStats(fallbackDashboardStats);
-        setTemplates(fallbackTemplates);
-        setRecentWorkflows(fallbackRecentWorkflows);
-        setDashboardMode("demo");
-      } finally {
-        setLoadingDashboard(false);
+    const refreshTimer = window.setInterval(refreshDashboardData, 5000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboardData();
       }
     };
 
-    loadDashboardData();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   /*
@@ -166,6 +230,20 @@ function App() {
     openBuilder();
   };
 
+  const handleWorkflowChange = async (workflow, statusOverride = null, persisted = false) => {
+    if (workflow) {
+      if (persisted) {
+        await refreshDashboardData();
+        return;
+      }
+
+      updateDashboardFromWorkflow(workflow, statusOverride);
+      return;
+    }
+
+    refreshDashboardData();
+  };
+
   return (
     <div className="app">
 
@@ -193,6 +271,7 @@ function App() {
         <WorkflowBuilder
           onHistoryChange={handleHistoryChange}
           prefillRequirement={activeTemplate}
+          onWorkflowChange={handleWorkflowChange}
         />
 
 

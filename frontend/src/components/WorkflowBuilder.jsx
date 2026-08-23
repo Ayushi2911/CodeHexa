@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { generateWorkflowFromRequirement } from "../data/workflowGenerator";
 import { validateWorkflow } from "../utils/workflowValidator";
 import { modifyWorkflow } from "../utils/workflowModifier";
+import { workflowApi } from "../services/api";
 
 import {
   createExecutionState,
@@ -18,7 +19,7 @@ import {
 import WorkflowInspector from "./WorkflowInspector";
 import WorkflowJsonPanel from "./WorkflowJsonPanel";
 
-function WorkflowBuilder({ onHistoryChange, prefillRequirement = "" }) {
+function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowChange }) {
   const [requirement, setRequirement] = useState(prefillRequirement);
   const [workflow, setWorkflow] = useState(null);
   const [selectedStep, setSelectedStep] = useState(null);
@@ -64,7 +65,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "" }) {
    * =========================================================
    */
 
-  const generateWorkflow = () => {
+  const generateWorkflow = async () => {
     if (!requirement.trim()) {
       alert(
         "Please enter a business requirement first."
@@ -85,6 +86,33 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "" }) {
     setExecutionState(
       createExecutionState(generatedWorkflow)
     );
+
+    try {
+      const response = await workflowApi.createWorkflow({
+        name: generatedWorkflow.name,
+        requirement,
+        status: generatedWorkflow.status,
+        confidence: generatedWorkflow.confidence || 0,
+        source: "detected",
+        nodes: generatedWorkflow.steps.map((step, index) => ({
+          id: step.id,
+          type: step.type,
+          label: step.name,
+          config: step,
+          position: { x: index * 220, y: 120 },
+        })),
+        edges: [],
+      });
+
+      if (onWorkflowChange) {
+        onWorkflowChange(response.data?.workflow || generatedWorkflow, "draft", true);
+      }
+    } catch (error) {
+      console.error("Failed to persist generated workflow", error);
+      if (onWorkflowChange) {
+        onWorkflowChange(generatedWorkflow, "draft");
+      }
+    }
 
     setExecutionMessage("");
   };
@@ -161,6 +189,10 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "" }) {
     setExecutionState(
       createExecutionState(result.workflow)
     );
+
+    if (onWorkflowChange) {
+      onWorkflowChange(result.workflow, "draft");
+    }
 
     setExecutionMessage("");
   };

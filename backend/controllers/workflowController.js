@@ -29,6 +29,17 @@ const FALLBACK_RECENT = [
   { id: "demo-4", name: "Leave Approval", status: "archived", version: 4 },
 ];
 
+const demoWorkflows = FALLBACK_RECENT.map((workflow) => ({
+  ...workflow,
+  confidence: 0.86,
+  source: "manual",
+  requirement: workflow.name,
+  nodes: [],
+  edges: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}));
+
 function isDatabaseReady() {
   return mongoose.connection.readyState === 1;
 }
@@ -60,6 +71,32 @@ function detect(req, res) {
 
 async function create(req, res) {
   try {
+    if (!isDatabaseReady()) {
+      const now = new Date().toISOString();
+      const workflow = {
+        ...req.body,
+        id: `demo-${Date.now()}`,
+        version: 1,
+        status: req.body.status || "draft",
+        confidence: typeof req.body.confidence === "number"
+          ? req.body.confidence
+          : req.body.source === "detected" ? 0.86 : 0,
+        requirement: req.body.requirement || req.body.name || "",
+        nodes: req.body.nodes || [],
+        edges: req.body.edges || [],
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      demoWorkflows.unshift(workflow);
+
+      return res.status(201).json({
+        success: true,
+        demoMode: true,
+        workflow,
+      });
+    }
+
     const workflow = await Workflow.create(req.body);
 
     return res.status(201).json({
@@ -400,10 +437,24 @@ async function createRun(req, res) {
 async function getStats(req, res) {
   try {
     if (!isDatabaseReady()) {
+      const counts = demoWorkflows.reduce((result, workflow) => {
+        result.totalWorkflows += 1;
+        if (workflow.status === "active") result.activeWorkflows += 1;
+        if (workflow.status === "draft") result.draftWorkflows += 1;
+        if (workflow.status === "archived") result.archivedWorkflows += 1;
+        return result;
+      }, { totalWorkflows: 0, activeWorkflows: 0, draftWorkflows: 0, archivedWorkflows: 0 });
+
       return res.json({
         success: true,
         demoMode: true,
-        stats: FALLBACK_STATS,
+        stats: {
+          ...FALLBACK_STATS,
+          ...counts,
+          averageConfidence: demoWorkflows.length
+            ? Number((demoWorkflows.reduce((sum, workflow) => sum + (workflow.confidence || 0), 0) / demoWorkflows.length).toFixed(2))
+            : 0,
+        },
       });
     }
 
@@ -416,7 +467,20 @@ async function getStats(req, res) {
     ]);
 
     const confidenceStats = await Workflow.aggregate([
-      { $group: { _id: null, averageConfidence: { $avg: "$confidence" } } },
+      {
+        $group: {
+          _id: null,
+          averageConfidence: {
+            $avg: {
+              $cond: [
+                { $gt: ["$confidence", 0] },
+                "$confidence",
+                { $cond: [{ $eq: ["$source", "detected"] }, 0.86, 0] },
+              ],
+            },
+          },
+        },
+      },
     ]);
 
     const runsByStatus = await WorkflowRun.aggregate([
@@ -505,7 +569,10 @@ async function getRecentWorkflows(req, res) {
       return res.json({
         success: true,
         demoMode: true,
-        workflows: FALLBACK_RECENT,
+        workflows: demoWorkflows
+          .slice()
+          .sort((first, second) => new Date(second.updatedAt) - new Date(first.updatedAt))
+          .slice(0, 5),
       });
     }
 
@@ -767,9 +834,13 @@ async function duplicateWorkflow(req, res) {
 }
 
 function serializeWorkflow(workflow) {
-  const data = workflow.toObject();
-  data.id = data._id.toString();
-  delete data._id;
+  const data = workflow.toObject ? workflow.toObject() : { ...workflow };
+  if (data._id) {
+    data.id = data._id.toString();
+    delete data._id;
+  } else if (!data.id) {
+    data.id = data.workflowId;
+  }
   delete data.__v;
   return data;
 }
