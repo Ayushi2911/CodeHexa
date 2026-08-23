@@ -1,75 +1,171 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const connectDatabase = require("./config/database");
+const express =
+  require("express");
+
+const cors =
+  require("cors");
+
+const dotenv =
+  require("dotenv");
+
+const connectDatabase =
+  require(
+    "./config/database"
+  );
 
 dotenv.config();
 
-const app = express();
+const app =
+  express();
 
-const PORT = process.env.PORT || 4000;
+const PORT =
+  process.env.PORT ||
+  4000;
 
-// Middleware
 app.use(cors());
-app.use(express.json());
 
-// Routes
-const workflowRoutes = require("./routes/workflowRoutes");
+app.use(
+  express.json({
+    limit: "1mb",
+  })
+);
 
-app.use("/api/workflows", workflowRoutes);
+const workflowRoutes =
+  require(
+    "./routes/workflowRoutes"
+  );
 
-// Health check
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "CodeHexa Backend is running 🚀",
-    project: "PS11 - Business Workflow Detection & Diagram Generation",
-  });
-});
+const formsRoutes =
+  require(
+    "./routes/formsRoutes"
+  );
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    service: "CodeHexa API",
-    status: "healthy",
-  });
-});
+app.use(
+  "/api/workflows",
+  workflowRoutes
+);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "API endpoint not found.",
-    path: req.originalUrl,
-  });
-});
+app.use(
+  "/workflow",
+  workflowRoutes
+);
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err);
+app.use(
+  "/forms",
+  formsRoutes
+);
 
-  res.status(500).json({
-    success: false,
-    message: "Internal server error.",
-    error: err.message,
-  });
-});
+app.get(
+  "/",
+  (req, res) =>
+    res.json({
+      ok: true,
+
+      message:
+        "CodeHexa PS11 backend is running",
+
+      project:
+        "PS11 - Business Workflow Detection & Diagram Generation",
+    })
+);
+
+app.get(
+  "/api/health",
+
+  (req, res) =>
+    res.json({
+      ok: true,
+
+      status:
+        "healthy",
+
+      database:
+        app.locals
+          .dbConnected
+          ? "connected"
+          : "not connected",
+    })
+);
+
+app.use(
+  (req, res) =>
+    res
+      .status(404)
+      .json({
+        ok: false,
+
+        error: {
+          code:
+            "NOT_FOUND",
+
+          message:
+            "API endpoint not found",
+
+          path:
+            req.originalUrl,
+        },
+      })
+);
+
+app.use(
+  (
+    err,
+    req,
+    res,
+    next
+  ) => {
+    console.error(err);
+
+    res
+      .status(500)
+      .json({
+        ok: false,
+
+        error: {
+          code:
+            "INTERNAL_ERROR",
+
+          message:
+            err.message,
+        },
+      });
+  }
+);
 
 async function startServer() {
-  try {
-    const dbConnected = await connectDatabase();
-    app.locals.dbConnected = dbConnected;
+  const dbConnected =
+    await connectDatabase();
 
-    app.listen(PORT, () => {
-      console.log(`CodeHexa backend running on http://localhost:${PORT}`);
-      if (!dbConnected) {
-        console.log("Demo mode enabled: database-backed features will use sample data until MongoDB is configured.");
-      }
-    });
-  } catch (error) {
-    console.error("Unable to start backend:", error.message);
-    process.exit(1);
-  }
+  app.locals.dbConnected =
+    dbConnected;
+
+  app.listen(
+    PORT,
+    () => {
+      console.log(
+        `PS11 backend running at http://localhost:${PORT} | MongoDB: ${
+          dbConnected
+            ? "connected"
+            : "not connected"
+        }`
+      );
+    }
+  );
 }
 
-startServer();
+if (
+  require.main ===
+  module
+) {
+  startServer()
+    .catch(
+      (error) => {
+        console.error(
+          error
+        );
+
+        process.exit(1);
+      }
+    );
+}
+
+module.exports = app;

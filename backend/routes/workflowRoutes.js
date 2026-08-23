@@ -1,49 +1,56 @@
-const express = require("express");
+const express =require("express");
 
-const workflowController = require("../controllers/workflowController");
+const controller =require("../controllers/workflowController");
 
-const router = express.Router();
+const router =express.Router();
 
-// Detect a workflow from natural-language requirement
-router.post("/detect", workflowController.detect);
+router.post("/detect",controller.detect);
 
-// Workflow statistics
-router.get("/stats", workflowController.getStats);
-router.get("/templates", workflowController.getTemplates);
-router.get("/recent", workflowController.getRecentWorkflows);
+router.post("/create",controller.create);
 
-// Bulk operations
-router.post("/bulk-delete", workflowController.bulkDeleteWorkflows);
-router.post("/import", workflowController.importWorkflows);
+router.post("/",controller.create);
 
-// Validate workflow payload
-router.post("/validate", workflowController.validateWorkflow);
+router.get("/list",controller.getAll);
 
-// Create workflow
-router.post("/", workflowController.create);
+router.get("/",controller.getAll);
 
-// Export workflows
-router.get("/export", workflowController.exportWorkflow);
+router.get("/stats",controller.getStats);
+router.get("/templates",controller.getTemplates);
 
-// Get all workflows
-router.get("/", workflowController.getAll);
+router.post("/validate",controller.validateEndpoint);
 
-// Workflow runs
-router.post("/:id/runs", workflowController.createRun);
-router.get("/:id/runs", workflowController.getWorkflowRuns);
-router.get("/:id/runs/:runId", workflowController.getWorkflowRunById);
-router.patch("/:id/runs/:runId/status", workflowController.updateRunStatus);
+router.get("/run/:runId",controller.runById);
 
-// Workflow status and delete
-router.patch("/:id/status", workflowController.updateStatus);
-router.post("/:id/duplicate", workflowController.duplicateWorkflow);
-router.get("/:id/export", workflowController.exportWorkflow);
-router.delete("/:id", workflowController.deleteWorkflow);
+router.get("/runs/:id",controller.runs);
 
-// Get one workflow
-router.get("/:id", workflowController.getById);
+router.post("/trigger/:id",controller.trigger);
 
-// Update workflow
-router.put("/:id", workflowController.update);
+router.post("/:id/validate",controller.validateById);
 
-module.exports = router;
+router.post("/:id/version",controller.createVersion);
+
+router.get("/:id/versions",controller.versions);
+
+router.post("/:id/publish",controller.publish);
+
+router.post("/:id/draft",controller.createDraft);
+router.post("/:id/agent-edit",controller.agentEdit);
+
+router.post("/:id/agent-edit/apply",controller.applyAgentEdit);
+
+router.get("/:id/export",controller.exportWorkflow);
+
+router.patch("/:id",controller.update);
+router.put("/:id",controller.update);
+router.delete("/:id",controller.softDelete);
+router.post(
+  "/llm/test",
+  controller.testLLM
+);
+router.post(
+  "/vlm/test",
+  controller.testVLM
+);
+router.get("/:id",controller.getById);
+
+module.exports =router;

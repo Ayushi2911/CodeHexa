@@ -69,7 +69,7 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
     if (selectedStep) {
       setFormData({
         name: selectedStep.name || "",
-        target: selectedStep.target || "",
+        target: selectedStep.target || selectedStep.schema || selectedStep.functionName || "",
         onSuccess: selectedStep.onSuccess || "",
         onFailure: selectedStep.onFailure || ""
       });
@@ -139,15 +139,13 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
             <p className="inspector-label">STEP INSPECTOR</p>
             <h3>{selectedStep.name}</h3>
           </div>
-
-          
         </div>
 
         <div className="inspector-meta">
-  <span className="meta-pill">
-    {selectedStep.type || "STEP"}
-  </span>
-</div>
+          <span className="meta-pill">
+            {selectedStep.type || selectedStep.actionType || "STEP"}
+          </span>
+        </div>
       </div>
 
       {/* Configuration */}
@@ -202,7 +200,7 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
                     <ArrowRightIcon />
                   </div>
 
-                  <code>{value}</code>
+                  <code>{typeof value === "object" ? JSON.stringify(value) : String(value)}</code>
                 </div>
               )
             )}

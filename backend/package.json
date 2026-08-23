@@ -1,14 +1,21 @@
 {
-  "name": "backend",
+  "name": "codehexa-ps11-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "PS11 Business Workflow Detection and Diagram Generation Backend",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test tests/*.test.js",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "seed": "node utils/seedData.js",
+    "dataset:summary": "node scripts/analyzeBpmDataset.js"
   },
-  "keywords": [],
+  "keywords": [
+    "workflow",
+    "ps11",
+    "node",
+    "mongodb"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {

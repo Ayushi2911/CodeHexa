@@ -4,6 +4,10 @@ import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import WorkflowBuilder from "./components/WorkflowBuilder";
 import FeatureCard from "./components/FeatureCard";
+import AboutSection from "./components/AboutSection";
+import HelpSection from "./components/HelpSection";
+import ContactSection from "./components/ContactSection";
+import Footer from "./components/Footer";
 import { workflowApi } from "./services/api";
 
 import "./App.css";
@@ -22,7 +26,96 @@ function App() {
   const [recentWorkflows, setRecentWorkflows] = useState([]);
   const [activeTemplate, setActiveTemplate] = useState("");
   const [loadingDashboard, setLoadingDashboard] = useState(true);
-  const [dashboardMode, setDashboardMode] = useState("live");
+  const [activeSection, setActiveSection] = useState("home");
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("codehexa_theme") || "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("codehexa_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = [
+        "home",
+        "builder",
+        "templates",
+        "features",
+        "dashboard",
+        "about",
+        "help",
+        "contact",
+      ];
+      const scrollPosition = window.scrollY + 140;
+
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const el = document.getElementById(sections[i]);
+        if (el) {
+          const top = el.offsetTop;
+          if (scrollPosition >= top) {
+            setActiveSection(sections[i]);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  /*
+   * =========================================================
+   * SCROLL REVEAL (SUBTLE COMING UP ANIMATION)
+   * =========================================================
+   */
+  useEffect(() => {
+    const observerCallback = (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("scroll-revealed");
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(observerCallback, {
+      root: null,
+      rootMargin: "0px 0px -50px 0px",
+      threshold: 0.08,
+    });
+
+    const selector = [
+      ".feature-card",
+      ".stat-card",
+      ".dashboard-panel",
+      ".about-story-card",
+      ".about-pillar-card",
+      ".quickstart-card",
+      ".faq-item",
+      ".channel-card",
+      ".contact-form-container",
+      ".requirement-box",
+      ".about-header",
+      ".help-header",
+      ".contact-header",
+      ".features-eyebrow",
+    ].join(", ");
+
+    const elements = document.querySelectorAll(selector);
+    elements.forEach((el) => {
+      el.classList.add("scroll-hidden");
+      observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [loadingDashboard]);
 
   const normalizeRecentWorkflow = (workflow, fallbackStatus = "draft") => {
     if (!workflow) return null;
@@ -252,8 +345,11 @@ function App() {
           ===================================================== */}
 
       <Navbar
+        activeSection={activeSection}
         onOpenBuilder={openBuilder}
         onOpenHistory={openHistory}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
 
@@ -283,73 +379,76 @@ function App() {
           className="features"
           id="features"
         >
-
-          <p className="tag">
+          <div className="features-eyebrow">
+            <span className="features-eyebrow-dot" />
             PLATFORM CAPABILITIES
-          </p>
-
+          </div>
 
           <h2>
-            Everything needed to build and
-            manage workflows
+            Everything needed to build and manage workflows
           </h2>
 
-
           <div className="feature-grid">
-  <FeatureCard
-    icon="✦"
-    title="AI Workflow Builder"
-    description="Turn natural-language requirements into structured, intelligent workflows."
-  />
+            <FeatureCard
+              icon="✦"
+              title="AI Workflow Builder"
+              description="Turn natural-language requirements into structured, intelligent workflows."
+              number="0"
+            />
 
-  <FeatureCard
-    icon="◇"
-    title="Visual Workflow Editor"
-    description="Design and refine every workflow step through a clear visual interface."
-  />
+            <FeatureCard
+              icon="◈"
+              title="Visual Workflow Editor"
+              description="Design and refine every workflow step through a clear visual interface."
+              number="0"
+            />
 
-  <FeatureCard
-    icon="✓"
-    title="Smart Validation"
-    description="Catch workflow issues early with intelligent validation before execution."
-  />
+            <FeatureCard
+              icon="✓"
+              title="Smart Validation"
+              description="Catch workflow issues early with intelligent validation before execution."
+              number="0"
+            />
 
-  <FeatureCard
-    icon="⌘"
-    title="Easy Integrations"
-    description="Connect your workflows to services, systems, and business tools with ease."
-  />
+            <FeatureCard
+              icon="⌘"
+              title="Easy Integrations"
+              description="Connect your workflows to services, systems, and business tools with ease."
+              number="0"
+            />
 
-  <FeatureCard
-    icon="◈"
-    title="Secure & Reliable"
-    description="Build dependable automation with controlled execution and predictable flows."
-  />
+            <FeatureCard
+              icon="🛡"
+              title="Secure & Reliable"
+              description="Build dependable automation with controlled execution and predictable flows."
+              number="0"
+            />
 
-  <FeatureCard
-    icon="↗"
-    title="Analytics & Insights"
-    description="Understand workflow activity and execution outcomes through useful insights."
-  />
-</div>
+            <FeatureCard
+              icon="↗"
+              title="Analytics & Insights"
+              description="Understand workflow activity and execution outcomes through useful insights."
+              number="0"
+            />
+          </div>
         </section>
 
-        <section className="dashboard-section">
+        <section className="dashboard-section" id="dashboard">
           <div className="dashboard-header">
             <div>
-              <p className="tag">LIVE DASHBOARD</p>
+              <div className="dashboard-title-row">
+                <p className="tag">LIVE DASHBOARD</p>
+                <span className="status-pill status-online">
+                  <span className="status-dot"></span>
+                  Connected (MongoDB & Bedrock AI)
+                </span>
+              </div>
               <h2>Workflow health overview</h2>
             </div>
           </div>
 
           {!loadingDashboard ? (
             <>
-              {dashboardMode === "demo" && (
-                <div className="demo-banner">
-                  Demo mode is active because the backend is not connected right now. The dashboard is showing sample workflow data.
-                </div>
-              )}
-
               <div className="stats-grid">
                 <div className="stat-card">
                   <span>Total workflows</span>
@@ -369,7 +468,7 @@ function App() {
                 </div>
               </div>
 
-              <div className="dashboard-panels">
+              <div className="dashboard-panels" id="templates">
                 <div className="dashboard-panel">
                   <div className="panel-header">
                     <h3>Workflow templates</h3>
@@ -419,7 +518,20 @@ function App() {
           )}
         </section>
 
+        <AboutSection />
+
+        <HelpSection />
+
+        <ContactSection />
+
       </main>
+
+      <Footer
+        onOpenBuilder={openBuilder}
+        onOpenHistory={openHistory}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
 
 
       {/* =====================================================

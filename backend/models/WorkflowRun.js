@@ -2,20 +2,26 @@ const mongoose = require("mongoose");
 
 const stepResultSchema = new mongoose.Schema(
   {
-    nodeId: {
+    stepId: {
       type: String,
       required: true,
     },
 
-    nodeLabel: {
+    name: {
       type: String,
       default: "",
     },
 
     status: {
       type: String,
-      enum: ["pending", "running", "success", "failed", "skipped"],
-      default: "pending",
+      enum: [
+        "pending",
+        "running",
+        "success",
+        "failed",
+        "skipped",
+      ],
+      required: true,
     },
 
     input: {
@@ -28,9 +34,19 @@ const stepResultSchema = new mongoose.Schema(
       default: {},
     },
 
+    reason: {
+      type: String,
+      default: "",
+    },
+
     error: {
       type: String,
       default: "",
+    },
+
+    durationMs: {
+      type: Number,
+      default: 0,
     },
 
     startedAt: {
@@ -43,7 +59,9 @@ const stepResultSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { _id: false }
+  {
+    _id: false,
+  }
 );
 
 const workflowRunSchema = new mongoose.Schema(
@@ -52,6 +70,12 @@ const workflowRunSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Workflow",
       required: true,
+      index: true,
+    },
+
+    workflowName: {
+      type: String,
+      default: "",
     },
 
     workflowVersion: {
@@ -59,15 +83,10 @@ const workflowRunSchema = new mongoose.Schema(
       default: 1,
     },
 
-    status: {
+    projectName: {
       type: String,
-      enum: ["queued", "running", "completed", "failed", "cancelled"],
-      default: "queued",
-    },
-
-    triggerType: {
-      type: String,
-      default: "manual",
+      required: true,
+      index: true,
     },
 
     triggerPayload: {
@@ -75,9 +94,16 @@ const workflowRunSchema = new mongoose.Schema(
       default: {},
     },
 
-    currentNodeId: {
+    status: {
       type: String,
-      default: null,
+      enum: [
+        "pending",
+        "running",
+        "completed",
+        "failed",
+        "partial",
+      ],
+      default: "pending",
     },
 
     stepResults: {
@@ -85,47 +111,24 @@ const workflowRunSchema = new mongoose.Schema(
       default: [],
     },
 
-    logs: {
-      type: [
-        {
-          timestamp: {
-            type: Date,
-            default: Date.now,
-          },
-
-          level: {
-            type: String,
-            enum: ["info", "success", "warning", "error"],
-            default: "info",
-          },
-
-          message: {
-            type: String,
-            required: true,
-          },
-
-          nodeId: {
-            type: String,
-            default: null,
-          },
-        },
-      ],
-      default: [],
-    },
-
-    error: {
-      type: String,
-      default: "",
-    },
-
     startedAt: {
       type: Date,
-      default: null,
+      default: Date.now,
     },
 
     completedAt: {
       type: Date,
       default: null,
+    },
+
+    totalDurationMs: {
+      type: Number,
+      default: 0,
+    },
+
+    dryRun: {
+      type: Boolean,
+      default: false,
     },
   },
   {
@@ -133,6 +136,6 @@ const workflowRunSchema = new mongoose.Schema(
   }
 );
 
-const WorkflowRun = mongoose.model("WorkflowRun", workflowRunSchema);
-
-module.exports = WorkflowRun;
+module.exports =
+  mongoose.models.WorkflowRun ||
+  mongoose.model("WorkflowRun", workflowRunSchema);

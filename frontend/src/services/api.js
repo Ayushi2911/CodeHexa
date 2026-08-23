@@ -16,4 +16,15 @@ export const workflowApi = {
   updateWorkflow: (id, payload) => api.put(`/workflows/${id}`, payload),
   updateWorkflowStatus: (id, status) => api.patch(`/workflows/${id}/status`, { status }),
   deleteWorkflow: (id) => api.delete(`/workflows/${id}`),
+
+  // Extended endpoints
+  detectWorkflow: (requirement) => api.post("/workflows/detect", { requirement }),
+  validateWorkflow: (workflow) => api.post("/workflows/validate", { workflow }),
+  triggerWorkflow: (workflowId, payload = {}) => api.post(`/workflows/${workflowId}/trigger`, { payload }),
+  agentEdit: (workflowId, command, currentWorkflow = null) =>
+    api.post(`/workflows/${workflowId}/agent-edit`, { command, currentWorkflow }),
+  applyAgentEdit: (workflowId, patch) =>
+    api.post(`/workflows/${workflowId}/apply-edit`, { patch }),
+  testLLM: (prompt) => api.post("/workflows/llm/test", { prompt }),
+  testVLM: (imageUrl, prompt) => api.post("/workflows/vlm/test", { imageUrl, prompt }),
 };

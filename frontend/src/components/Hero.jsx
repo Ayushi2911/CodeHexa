@@ -89,7 +89,7 @@ function Hero({ onOpenBuilder }) {
 
         <h1>
           Build smarter workflows.
-          <span>Automate everything.</span>
+          <span> Automate everything.</span>
         </h1>
 
         <p className="hero-description">
@@ -152,131 +152,160 @@ function Hero({ onOpenBuilder }) {
 
         <div className="hero-glow" />
 
-        {/* Floating cards */}
-        <div className="hero-floating-card floating-ai">
-          <div className="floating-icon">
-            <SparkIcon />
-          </div>
-
-          <div>
-            <span>AI ENGINE</span>
-            <strong>Active</strong>
-          </div>
-
-          <div className="live-dot" />
-        </div>
-
-        <div className="hero-floating-card floating-validation">
-          <div className="floating-icon blue-icon">
-            <CheckIcon />
-          </div>
-
-          <div>
-            <span>REAL-TIME</span>
-            <strong>Validation</strong>
-          </div>
-        </div>
-
-        <div className="hero-floating-card floating-integrations">
-          <div className="floating-icon">
-            <PlugIcon />
-          </div>
-
-          <div>
-            <span>SEAMLESS</span>
-            <strong>Integrations</strong>
-          </div>
-        </div>
-
-        {/* Main glass workflow */}
-        <div className="hero-workflow-shell">
-          <div className="hero-workflow-top">
-            <div className="workflow-window-dots">
-              <span />
-              <span />
-              <span />
+        <div className="hero-workflow-stage">
+          {/* Floating card: AI ENGINE (Top-Left corner overlap) */}
+          <div className="hero-floating-card floating-ai">
+            <div className="floating-icon">
+              <SparkIcon />
             </div>
 
-            <div className="workflow-window-title">
-              <WorkflowIcon />
-              <span>Workflow Engine</span>
+            <div>
+              <span>AI ENGINE</span>
+              <strong>Active</strong>
             </div>
 
-            <div className="workflow-status">
-              <span />
-              LIVE
+            <div className="live-dot" />
+          </div>
+
+          {/* Floating card: REAL-TIME VALIDATION (Right edge overlap) */}
+          <div className="hero-floating-card floating-validation">
+            <div className="floating-icon blue-icon">
+              <CheckIcon />
+            </div>
+
+            <div>
+              <span>REAL-TIME</span>
+              <strong>Validation</strong>
             </div>
           </div>
 
-          <div className="hero-workflow-content">
-            <div className="workflow-mini-card trigger-mini">
-              <div className="mini-number">01</div>
+          {/* Floating card: SEAMLESS INTEGRATIONS (Left edge overlap) */}
+          <div className="hero-floating-card floating-integrations">
+            <div className="floating-icon">
+              <PlugIcon />
+            </div>
 
-              <div className="mini-icon">
-                <SparkIcon />
+            <div>
+              <span>SEAMLESS</span>
+              <strong>Integrations</strong>
+            </div>
+          </div>
+
+          {/* Main glass workflow shell */}
+          <div className="hero-workflow-shell">
+            <div className="hero-workflow-top">
+              <div className="workflow-window-dots">
+                <span />
+                <span />
+                <span />
               </div>
 
-              <div>
-                <span>TRIGGER</span>
-                <strong>Order Placed</strong>
-              </div>
-            </div>
-
-            <div className="workflow-connector">
-              <span />
-            </div>
-
-            <div className="workflow-mini-card active-mini">
-              <div className="mini-number">02</div>
-
-              <div className="mini-icon purple-mini">
+              <div className="workflow-window-title">
                 <WorkflowIcon />
+                <span>Workflow Engine</span>
               </div>
 
-              <div>
-                <span>ACTION</span>
-                <strong>Create Invoice</strong>
+              <div className="workflow-status">
+                <span />
+                LIVE
               </div>
-
-              <div className="active-pulse" />
             </div>
 
-            <div className="workflow-connector">
-              <span />
+            <div className="hero-workflow-content">
+              <div className="workflow-mini-card step-card-1 trigger-mini">
+                <div className="mini-number">01</div>
+
+                <div className="mini-icon">
+                  <SparkIcon />
+                </div>
+
+                <div>
+                  <span className="card-tag">TRIGGER</span>
+                  <strong className="card-title">Order Placed</strong>
+                </div>
+              </div>
+
+              <div className="workflow-connector flow-connector-1">
+                <svg
+                  width="14"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="arrow-svg"
+                >
+                  <line x1="12" y1="2" x2="12" y2="18" />
+                  <polyline points="7 13 12 18 17 13" />
+                </svg>
+              </div>
+
+              <div className="workflow-mini-card step-card-2 active-mini">
+                <div className="mini-number">02</div>
+
+                <div className="mini-icon purple-mini">
+                  <WorkflowIcon />
+                </div>
+
+                <div>
+                  <span className="card-tag">ACTION</span>
+                  <strong className="card-title">Create Invoice</strong>
+                </div>
+              </div>
+
+              <div className="workflow-connector flow-connector-2">
+                <svg
+                  width="14"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="arrow-svg"
+                >
+                  <line x1="12" y1="2" x2="12" y2="18" />
+                  <polyline points="7 13 12 18 17 13" />
+                </svg>
+              </div>
+
+              <div className="workflow-mini-card step-card-3 function-mini">
+                <div className="mini-number">03</div>
+
+                <div className="mini-icon blue-mini">
+                  <CheckIcon />
+                </div>
+
+                <div>
+                  <span className="card-tag">FUNCTION</span>
+                  <strong className="card-title">Send Confirmation</strong>
+                </div>
+              </div>
             </div>
 
-            <div className="workflow-mini-card">
-              <div className="mini-number">03</div>
+            <div className="hero-workflow-footer">
+              <span>
+                <i />
+                Workflow validated
+              </span>
 
-              <div className="mini-icon blue-mini">
-                <CheckIcon />
-              </div>
-
-              <div>
-                <span>FUNCTION</span>
-                <strong>Send Confirmation</strong>
-              </div>
+              <span>3 STEPS</span>
             </div>
           </div>
 
-          <div className="hero-workflow-footer">
-            <span>
-              <i />
-              Workflow validated
+          {/* Floating card: VISUAL WORKFLOW BUILDER (Bottom-Right corner overlap) */}
+          <div className="hero-floating-card floating-builder hero-builder-label">
+            <span className="floating-icon purple-icon">
+              <WorkflowIcon />
             </span>
 
-            <span>3 STEPS</span>
-          </div>
-        </div>
-
-        <div className="hero-builder-label">
-          <span className="builder-label-icon">
-            <WorkflowIcon />
-          </span>
-
-          <div>
-            <span>VISUAL WORKFLOW BUILDER</span>
-            <strong>Design. Validate. Automate.</strong>
+            <div>
+              <span>VISUAL WORKFLOW BUILDER</span>
+              <strong>Design. Validate. Automate.</strong>
+            </div>
           </div>
         </div>
       </div>

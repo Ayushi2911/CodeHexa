@@ -1,4 +1,10 @@
-function Navbar({ onOpenBuilder, onOpenHistory }) {
+function Navbar({
+  onOpenBuilder,
+  onOpenHistory,
+  activeSection = "home",
+  theme = "dark",
+  onToggleTheme,
+}) {
   return (
     <nav className="navbar">
       <a className="logo" href="#home">
@@ -7,12 +13,54 @@ function Navbar({ onOpenBuilder, onOpenHistory }) {
       </a>
 
       <div className="nav-links">
-        <a href="#home">Home</a>
-        <a href="#builder">Workflows</a>
-        <a href="#templates">Templates</a>
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#docs">Docs</a>
+        <a
+          href="#home"
+          className={`nav-link ${activeSection === "home" ? "active" : ""}`}
+        >
+          Home
+        </a>
+        <a
+          href="#builder"
+          className={`nav-link ${activeSection === "builder" ? "active" : ""}`}
+        >
+          Workflows
+        </a>
+        <a
+          href="#templates"
+          className={`nav-link ${activeSection === "templates" ? "active" : ""}`}
+        >
+          Templates
+        </a>
+        <a
+          href="#features"
+          className={`nav-link ${activeSection === "features" ? "active" : ""}`}
+        >
+          Features
+        </a>
+        <a
+          href="#dashboard"
+          className={`nav-link ${activeSection === "dashboard" ? "active" : ""}`}
+        >
+          Dashboard
+        </a>
+        <a
+          href="#about"
+          className={`nav-link ${activeSection === "about" ? "active" : ""}`}
+        >
+          About
+        </a>
+        <a
+          href="#help"
+          className={`nav-link ${activeSection === "help" ? "active" : ""}`}
+        >
+          Help
+        </a>
+        <a
+          href="#contact"
+          className={`nav-link ${activeSection === "contact" ? "active" : ""}`}
+        >
+          Contact
+        </a>
 
         <button
           className="history-btn"
@@ -26,10 +74,17 @@ function Navbar({ onOpenBuilder, onOpenHistory }) {
       <div className="navbar-actions">
         <button
           className="theme-btn"
+          onClick={onToggleTheme}
           type="button"
-          aria-label="Toggle theme"
+          aria-label="Toggle Theme"
+          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
         >
-          ◐
+          <span className="theme-icon">
+            {theme === "dark" ? "☀️" : "🌙"}
+          </span>
+          <span className="theme-text">
+            {theme === "dark" ? "Light" : "Dark"}
+          </span>
         </button>
 
         <button

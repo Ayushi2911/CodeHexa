@@ -74,8 +74,20 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
       return;
     }
 
-    const generatedWorkflow =
-      generateWorkflowFromRequirement(requirement);
+    let generatedWorkflow = null;
+
+    try {
+      const response = await workflowApi.detectWorkflow(requirement);
+      if (response?.data?.workflow) {
+        generatedWorkflow = response.data.workflow;
+      }
+    } catch (err) {
+      console.warn("Backend detection offline or failed, using local generator", err);
+    }
+
+    if (!generatedWorkflow) {
+      generatedWorkflow = generateWorkflowFromRequirement(requirement);
+    }
 
     setWorkflow(generatedWorkflow);
     setSelectedStep(null);
@@ -92,12 +104,12 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
       const response = await workflowApi.createWorkflow({
         name: generatedWorkflow.name,
         requirement,
-        status: generatedWorkflow.status,
-        confidence: generatedWorkflow.confidence || 0,
+        status: generatedWorkflow.status || "draft",
+        confidence: generatedWorkflow.confidence || 0.88,
         source: "detected",
-        nodes: generatedWorkflow.steps.map((step, index) => ({
+        nodes: (generatedWorkflow.steps || []).map((step, index) => ({
           id: step.id,
-          type: step.type,
+          type: step.type || "action",
           label: step.name,
           config: step,
           position: { x: index * 220, y: 120 },
@@ -109,7 +121,6 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
         onWorkflowChange(response.data?.workflow || generatedWorkflow, "draft", true);
       }
     } catch (error) {
-      console.error("Failed to persist generated workflow", error);
       if (onWorkflowChange) {
         onWorkflowChange(generatedWorkflow, "draft");
       }
@@ -355,21 +366,6 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
 
   /*
    * =========================================================
-   * STEP STATUS
-   * =========================================================
-   */
-
-  const getStepStatus = (stepId) => {
-    return (
-      executionState.find(
-        (item) =>
-          item.stepId === stepId
-      )?.status || "pending"
-    );
-  };
-
-  /*
-   * =========================================================
    * UI
    * =========================================================
    */
@@ -418,12 +414,17 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
           placeholder="Example: When an order is placed, create an invoice, update inventory, and send a confirmation to the customer."
         />
 
-        <button
-          className="primary-btn"
-          onClick={generateWorkflow}
-        >
-          Generate Workflow
-        </button>
+        <div className="requirement-box-actions">
+          <button
+            className="primary-btn generate-workflow-btn"
+            onClick={generateWorkflow}
+            type="button"
+          >
+            <span className="btn-spark-icon">✦</span>
+            Generate Workflow
+            <span className="btn-arrow-icon">→</span>
+          </button>
+        </div>
 
       </div>
 
@@ -554,7 +555,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
                   </h3>
 
                   <span>
-                    {workflow.steps.length} steps
+                    {workflow.steps?.length || 0} steps
                   </span>
 
                 </div>
@@ -594,7 +595,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
                         No failure — Normal execution
                       </option>
 
-                      {workflow.steps.map(
+                      {workflow.steps?.map(
                         (step) => (
                           <option
                             key={step.id}
@@ -693,17 +694,17 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
 
 
               <WorkflowDiagram
-  workflow={workflow}
-  selectedStepId={selectedStep?.id}
-  onSelectStep={(stepId) => {
-    const step = workflow.steps.find(
-      (step) => step.id === stepId
-    );
+                workflow={workflow}
+                selectedStepId={selectedStep?.id}
+                onSelectStep={(stepId) => {
+                  const step = workflow.steps?.find(
+                    (step) => step.id === stepId
+                  );
 
-    setSelectedStep(step || null);
-  }}
-/>
-</div>
+                  setSelectedStep(step || null);
+                }}
+              />
+            </div>
 
             {/* INSPECTOR */}
 
@@ -888,7 +889,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
 
                       <div className="execution-step-list">
 
-                        {execution.steps.map(
+                        {execution.steps?.map(
                           (step) => (
 
                             <div

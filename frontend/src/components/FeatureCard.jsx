@@ -1,12 +1,12 @@
 function ArrowUpRightIcon() {
   return (
     <svg
-      width="15"
-      height="15"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -17,7 +17,7 @@ function ArrowUpRightIcon() {
   );
 }
 
-function FeatureCard({ icon, title, description }) {
+function FeatureCard({ icon, title, description, number = "0" }) {
   return (
     <article className="feature-card">
       <div className="feature-card-glow" />
@@ -28,7 +28,7 @@ function FeatureCard({ icon, title, description }) {
         </div>
 
         <div className="feature-number">
-          0
+          {number}
         </div>
       </div>
 

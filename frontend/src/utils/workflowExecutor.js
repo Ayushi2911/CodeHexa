@@ -1,5 +1,5 @@
 export function createExecutionState(workflow) {
-  return workflow.steps.map((step) => ({
+  return (workflow?.steps || []).map((step) => ({
     stepId: step.id,
     status: "pending",
     attempts: 0
@@ -19,7 +19,7 @@ export async function executeWorkflow(
     maxRetries = 1
   } = options;
 
-  for (const step of workflow.steps) {
+  for (const step of (workflow?.steps || [])) {
     let attempts = 0;
     let success = false;
 
@@ -29,7 +29,7 @@ export async function executeWorkflow(
       // Step starts running
       onStepUpdate(step.id, "running", attempts);
 
-      await delay(1500);
+      await delay(1200);
 
       // Simulate failure only for the selected step
       const shouldFail =

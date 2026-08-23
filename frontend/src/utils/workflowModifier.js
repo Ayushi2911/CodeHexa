@@ -1,10 +1,10 @@
 export function modifyWorkflow(workflow, command) {
-  const text = command.toLowerCase();
+  const text = (command || "").toLowerCase();
 
   // Create a copy so we do not directly modify React state
   const updatedWorkflow = {
     ...workflow,
-    steps: [...workflow.steps]
+    steps: [...(workflow?.steps || [])]
   };
 
   // Add email / notification step
