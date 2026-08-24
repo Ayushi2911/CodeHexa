@@ -78,9 +78,7 @@ async function create(req, res) {
         id: `demo-${Date.now()}`,
         version: 1,
         status: req.body.status || "draft",
-        confidence: typeof req.body.confidence === "number"
-          ? req.body.confidence
-          : req.body.source === "detected" ? 0.86 : 0,
+        confidence: req.body.confidence || 0,
         requirement: req.body.requirement || req.body.name || "",
         nodes: req.body.nodes || [],
         edges: req.body.edges || [],
@@ -467,20 +465,7 @@ async function getStats(req, res) {
     ]);
 
     const confidenceStats = await Workflow.aggregate([
-      {
-        $group: {
-          _id: null,
-          averageConfidence: {
-            $avg: {
-              $cond: [
-                { $gt: ["$confidence", 0] },
-                "$confidence",
-                { $cond: [{ $eq: ["$source", "detected"] }, 0.86, 0] },
-              ],
-            },
-          },
-        },
-      },
+      { $group: { _id: null, averageConfidence: { $avg: "$confidence" } } },
     ]);
 
     const runsByStatus = await WorkflowRun.aggregate([

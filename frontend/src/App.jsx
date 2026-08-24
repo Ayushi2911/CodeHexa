@@ -177,20 +177,6 @@ function App() {
 
   useEffect(() => {
     refreshDashboardData();
-
-    const refreshTimer = window.setInterval(refreshDashboardData, 5000);
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refreshDashboardData();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.clearInterval(refreshTimer);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
   }, []);
 
   /*
