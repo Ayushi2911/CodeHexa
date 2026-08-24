@@ -62,12 +62,22 @@ function EyeIcon({ visible }) {
 function AuthModal() {
   const { showAuthModal, authMode, setAuthMode, authMessage, closeAuthModal, login, register, googleSignIn } = useAuth();
 
+  // Clean empty state - No default values
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    country: "India",
-    location: "Mumbai",
+    country: "",
+    location: "",
+  });
+
+  // Google account selector prompt state
+  const [showGooglePrompt, setShowGooglePrompt] = useState(false);
+  const [googleData, setGoogleData] = useState({
+    email: "",
+    name: "",
+    country: "",
+    location: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -82,9 +92,22 @@ function AuthModal() {
     setError("");
   };
 
+  const handleGoogleChange = (e) => {
+    const { name, value } = e.target;
+    setGoogleData((prev) => ({ ...prev, [name]: value }));
+    setError("");
+  };
+
   const handleToggleMode = (mode) => {
     setAuthMode(mode);
+    setShowGooglePrompt(false);
     setError("");
+  };
+
+  const handleClose = () => {
+    setShowGooglePrompt(false);
+    setError("");
+    closeAuthModal();
   };
 
   const handleSubmit = async (e) => {
@@ -97,7 +120,7 @@ function AuthModal() {
     }
 
     if (!formData.password || formData.password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError("Password must be at least 6 characters long.");
       return;
     }
 
@@ -105,17 +128,27 @@ function AuthModal() {
 
     if (authMode === "register") {
       if (!formData.name.trim()) {
-        setError("Please enter your Full Name.");
+        setError("Please enter your Full Name / Username.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.country.trim()) {
+        setError("Please select your Country.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.location.trim()) {
+        setError("Please enter your City / Location.");
         setIsSubmitting(false);
         return;
       }
 
       const res = await register({
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
         password: formData.password,
-        country: formData.country,
-        location: formData.location || "Global",
+        country: formData.country.trim(),
+        location: formData.location.trim(),
       });
 
       setIsSubmitting(false);
@@ -123,7 +156,7 @@ function AuthModal() {
         setError(res.error || "Registration failed. Please try again.");
       }
     } else {
-      const res = await login(formData.email, formData.password);
+      const res = await login(formData.email.trim(), formData.password);
       setIsSubmitting(false);
       if (!res.success) {
         setError(res.error || "Invalid email or password.");
@@ -131,17 +164,42 @@ function AuthModal() {
     }
   };
 
-  const handleGoogleClick = async () => {
-    setIsSubmitting(true);
-    await googleSignIn({
+  const handleGoogleClick = () => {
+    setError("");
+    setGoogleData({
+      email: formData.email.trim() || "",
+      name: formData.name.trim() || "",
       country: formData.country || "India",
       location: formData.location || "Mumbai",
     });
+    setShowGooglePrompt(true);
+  };
+
+  const handleGoogleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!googleData.email.trim() || !googleData.email.includes("@")) {
+      setError("Please enter a valid Google / Gmail address.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    const res = await googleSignIn({
+      email: googleData.email.trim(),
+      name: googleData.name.trim() || googleData.email.split("@")[0],
+      country: googleData.country || "India",
+      location: googleData.location || "Mumbai",
+    });
+
     setIsSubmitting(false);
+    if (!res.success) {
+      setError(res.error || "Google sign-in failed. Please try again.");
+    }
   };
 
   return (
-    <div className="auth-modal-overlay" onClick={closeAuthModal}>
+    <div className="auth-modal-overlay" onClick={handleClose}>
       <div className="auth-modal-card" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="auth-modal-header">
@@ -151,7 +209,7 @@ function AuthModal() {
           </div>
           <button
             className="auth-close-btn"
-            onClick={closeAuthModal}
+            onClick={handleClose}
             type="button"
             aria-label="Close"
           >
@@ -159,194 +217,320 @@ function AuthModal() {
           </button>
         </div>
 
-        {/* Title */}
-        <div className="auth-title-block">
-          <h2>{authMode === "login" ? "Welcome back" : "Create your account"}</h2>
-          <p>
-            {authMode === "login"
-              ? "Sign in to access your saved workflows, history, and live runs."
-              : "Sign up to generate intelligent workflows, inspect DAG graphs, and publish live automations."}
-          </p>
-        </div>
-
-        {/* Guest Mode Reason Notification */}
-        {authMessage && (
-          <div className="auth-prompt-banner">
-            <span className="auth-prompt-icon">🔒</span>
-            <span>{authMessage}</span>
-          </div>
-        )}
-
-        {/* Mode Switcher Tabs */}
-        <div className="auth-tabs-row">
-          <button
-            className={authMode === "login" ? "auth-tab active" : "auth-tab"}
-            onClick={() => handleToggleMode("login")}
-            type="button"
-          >
-            Log In
-          </button>
-          <button
-            className={authMode === "register" ? "auth-tab active" : "auth-tab"}
-            onClick={() => handleToggleMode("register")}
-            type="button"
-          >
-            Sign Up
-          </button>
-        </div>
-
-        {/* Google Authentication */}
-        <div className="google-auth-container">
-          <button
-            className="google-auth-btn"
-            onClick={handleGoogleClick}
-            disabled={isSubmitting}
-            type="button"
-          >
-            <GoogleIcon />
-            <span>Continue with Google</span>
-          </button>
-        </div>
-
-        <div className="auth-divider">
-          <span>or continue with email</span>
-        </div>
-
-        {/* Error alert */}
-        {error && (
-          <div className="auth-error-alert">
-            <span>⚠️ {error}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {authMode === "register" && (
-            <div className="auth-field-group">
-              <label htmlFor="auth-name">FULL NAME</label>
-              <input
-                id="auth-name"
-                name="name"
-                type="text"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g. Minal Maurya"
-                required
-                autoComplete="name"
-              />
-            </div>
-          )}
-
-          <div className="auth-field-group">
-            <label htmlFor="auth-email">GMAIL / EMAIL ADDRESS</label>
-            <input
-              id="auth-email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="name@gmail.com"
-              required
-              autoComplete="email"
-            />
-          </div>
-
-          <div className="auth-field-group">
-            <label htmlFor="auth-password">PASSWORD</label>
-            <div className="password-input-wrapper">
-              <input
-                id="auth-password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="At least 6 characters"
-                required
-                autoComplete={authMode === "login" ? "current-password" : "new-password"}
-              />
-              <button
-                type="button"
-                className="password-toggle-btn"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                <EyeIcon visible={showPassword} />
-              </button>
-            </div>
-          </div>
-
-          {authMode === "register" && (
-            <div className="auth-two-col-grid">
-              <div className="auth-field-group">
-                <label htmlFor="auth-country">COUNTRY</label>
-                <select
-                  id="auth-country"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                >
-                  {POPULAR_COUNTRIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+        {/* -----------------------------------------------------------
+            VIEW A: GOOGLE ACCOUNT PICKER / EMAIL PROMPT
+            ----------------------------------------------------------- */}
+        {showGooglePrompt ? (
+          <div className="google-prompt-view">
+            <div className="google-prompt-header">
+              <div className="google-prompt-logo">
+                <GoogleIcon />
               </div>
+              <h3>Sign in with Google</h3>
+              <p>Choose or enter the Google account to authenticate with CodeHexa Flow.</p>
+            </div>
 
+            {/* Error alert */}
+            {error && (
+              <div className="auth-error-alert">
+                <span>⚠️ {error}</span>
+              </div>
+            )}
+
+            <form className="auth-form" onSubmit={handleGoogleSubmit}>
               <div className="auth-field-group">
-                <label htmlFor="auth-location">CITY / LOCATION</label>
+                <label htmlFor="google-email">GOOGLE / GMAIL ADDRESS</label>
                 <input
-                  id="auth-location"
-                  name="location"
-                  type="text"
-                  value={formData.location}
-                  onChange={handleChange}
-                  placeholder="e.g. Mumbai"
+                  id="google-email"
+                  name="email"
+                  type="email"
+                  value={googleData.email}
+                  onChange={handleGoogleChange}
+                  placeholder="your.name@gmail.com"
+                  required
+                  autoFocus
+                  autoComplete="email"
                 />
               </div>
+
+              <div className="auth-field-group">
+                <label htmlFor="google-name">YOUR FULL NAME (OPTIONAL)</label>
+                <input
+                  id="google-name"
+                  name="name"
+                  type="text"
+                  value={googleData.name}
+                  onChange={handleGoogleChange}
+                  placeholder="e.g. Minal Maurya"
+                  autoComplete="name"
+                />
+              </div>
+
+              <div className="auth-two-col-grid">
+                <div className="auth-field-group">
+                  <label htmlFor="google-country">COUNTRY</label>
+                  <select
+                    id="google-country"
+                    name="country"
+                    value={googleData.country}
+                    onChange={handleGoogleChange}
+                  >
+                    {POPULAR_COUNTRIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="auth-field-group">
+                  <label htmlFor="google-location">CITY / LOCATION</label>
+                  <input
+                    id="google-location"
+                    name="location"
+                    type="text"
+                    value={googleData.location}
+                    onChange={handleGoogleChange}
+                    placeholder="e.g. Mumbai"
+                  />
+                </div>
+              </div>
+
+              <div className="google-prompt-actions">
+                <button
+                  type="button"
+                  className="template-modal-cancel-btn"
+                  onClick={() => setShowGooglePrompt(false)}
+                >
+                  ← Back to Email
+                </button>
+                <button
+                  type="submit"
+                  className="primary-btn google-confirm-btn"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Authenticating..." : "Continue with Google ➔"}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          /* -----------------------------------------------------------
+              VIEW B: STANDARD EMAIL LOGIN & SIGNUP
+              ----------------------------------------------------------- */
+          <>
+            {/* Title */}
+            <div className="auth-title-block">
+              <h2>{authMode === "login" ? "Welcome back" : "Create your account"}</h2>
+              <p>
+                {authMode === "login"
+                  ? "Sign in to access your saved workflows, history, and live runs."
+                  : "Sign up to generate intelligent workflows, inspect DAG graphs, and publish live automations."}
+              </p>
             </div>
-          )}
 
-          <button
-            className="primary-btn auth-submit-btn"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting
-              ? "Processing..."
-              : authMode === "login"
-              ? "Log In ➔"
-              : "✦ Create Account ➔"}
-          </button>
-        </form>
+            {/* Guest Mode Reason Notification */}
+            {authMessage && (
+              <div className="auth-prompt-banner">
+                <span className="auth-prompt-icon">🔒</span>
+                <span>{authMessage}</span>
+              </div>
+            )}
 
-        {/* Footer switch link */}
-        <div className="auth-modal-footer">
-          {authMode === "login" ? (
-            <p>
-              Don&apos;t have an account yet?{" "}
+            {/* Mode Switcher Tabs */}
+            <div className="auth-tabs-row">
               <button
-                type="button"
-                className="auth-link-btn"
-                onClick={() => handleToggleMode("register")}
-              >
-                Sign Up for free
-              </button>
-            </p>
-          ) : (
-            <p>
-              Already have an account?{" "}
-              <button
-                type="button"
-                className="auth-link-btn"
+                className={authMode === "login" ? "auth-tab active" : "auth-tab"}
                 onClick={() => handleToggleMode("login")}
+                type="button"
               >
                 Log In
               </button>
-            </p>
-          )}
-        </div>
+              <button
+                className={authMode === "register" ? "auth-tab active" : "auth-tab"}
+                onClick={() => handleToggleMode("register")}
+                type="button"
+              >
+                Sign Up
+              </button>
+            </div>
+
+            {/* Google Authentication Trigger */}
+            <div className="google-auth-container">
+              <button
+                className="google-auth-btn"
+                onClick={handleGoogleClick}
+                disabled={isSubmitting}
+                type="button"
+              >
+                <GoogleIcon />
+                <span>Continue with Google</span>
+              </button>
+            </div>
+
+            <div className="auth-divider">
+              <span>or continue with email</span>
+            </div>
+
+            {/* Error alert with instant mode switch button */}
+            {error && (
+              <div className="auth-error-alert">
+                <div className="error-alert-content">
+                  <span>⚠️ {error}</span>
+                  {error.includes("not registered") && authMode === "login" && (
+                    <button
+                      type="button"
+                      className="error-action-link"
+                      onClick={() => handleToggleMode("register")}
+                    >
+                      Sign Up Now ➔
+                    </button>
+                  )}
+                  {error.includes("already registered") && authMode === "register" && (
+                    <button
+                      type="button"
+                      className="error-action-link"
+                      onClick={() => handleToggleMode("login")}
+                    >
+                      Log In Instead ➔
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Form */}
+            <form className="auth-form" onSubmit={handleSubmit}>
+              {authMode === "register" && (
+                <div className="auth-field-group">
+                  <label htmlFor="auth-name">FULL NAME / USERNAME *</label>
+                  <input
+                    id="auth-name"
+                    name="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="e.g. Minal Maurya"
+                    required
+                    autoComplete="name"
+                  />
+                </div>
+              )}
+
+              <div className="auth-field-group">
+                <label htmlFor="auth-email">GMAIL / EMAIL ADDRESS *</label>
+                <input
+                  id="auth-email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="name@gmail.com"
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="auth-field-group">
+                <label htmlFor="auth-password">PASSWORD *</label>
+                <div className="password-input-wrapper">
+                  <input
+                    id="auth-password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="At least 6 characters"
+                    required
+                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    <EyeIcon visible={showPassword} />
+                  </button>
+                </div>
+              </div>
+
+              {authMode === "register" && (
+                <div className="auth-two-col-grid">
+                  <div className="auth-field-group">
+                    <label htmlFor="auth-country">COUNTRY *</label>
+                    <select
+                      id="auth-country"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="" disabled>Select Country</option>
+                      {POPULAR_COUNTRIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="auth-field-group">
+                    <label htmlFor="auth-location">CITY / LOCATION *</label>
+                    <input
+                      id="auth-location"
+                      name="location"
+                      type="text"
+                      value={formData.location}
+                      onChange={handleChange}
+                      placeholder="e.g. Mumbai"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                className="primary-btn auth-submit-btn"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting
+                  ? "Processing..."
+                  : authMode === "login"
+                  ? "Log In ➔"
+                  : "✦ Create Account ➔"}
+              </button>
+            </form>
+
+            {/* Footer switch link */}
+            <div className="auth-modal-footer">
+              {authMode === "login" ? (
+                <p>
+                  Don&apos;t have an account yet?{" "}
+                  <button
+                    type="button"
+                    className="auth-link-btn"
+                    onClick={() => handleToggleMode("register")}
+                  >
+                    Sign Up for free
+                  </button>
+                </p>
+              ) : (
+                <p>
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    className="auth-link-btn"
+                    onClick={() => handleToggleMode("login")}
+                  >
+                    Log In
+                  </button>
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 export default AuthModal;
+

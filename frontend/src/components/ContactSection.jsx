@@ -1,5 +1,21 @@
 import { useState } from "react";
 
+const QUICK_TOPICS = [
+  { label: "⚡ Bedrock LLM Setup", subject: "Inquiry about AWS Bedrock LLM configuration", category: "support" },
+  { label: "🔄 Webhook Triggers", subject: "Custom Webhook integration question", category: "integrations" },
+  { label: "📊 Enterprise SLA", subject: "Enterprise dedicated orchestration quote", category: "enterprise" },
+  { label: "💡 Feature Request", subject: "Feature suggestion for Workflow Studio", category: "feedback" },
+];
+
+function SendPlaneIcon() {
+  return (
+    <svg className="contact-plane-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </svg>
+  );
+}
+
 function ContactSection() {
   const [formData, setFormData] = useState({
     name: "",
@@ -11,10 +27,20 @@ function ContactSection() {
 
   const [status, setStatus] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMessageFocused, setIsMessageFocused] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (status) setStatus(null);
+  };
+
+  const handleQuickTopic = (topic) => {
+    setFormData((prev) => ({
+      ...prev,
+      subject: topic.subject,
+      category: topic.category,
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -29,7 +55,7 @@ function ContactSection() {
       setIsSubmitting(false);
       setStatus({
         type: "success",
-        message: "Thank you for reaching out! Our team will get back to you within 24 hours.",
+        message: "Thank you for reaching out! Your message was delivered to our engineering team. We will get back to you within 24 hours.",
       });
       setFormData({
         name: "",
@@ -38,7 +64,7 @@ function ContactSection() {
         subject: "",
         message: "",
       });
-    }, 800);
+    }, 1000);
   };
 
   return (
@@ -97,12 +123,37 @@ function ContactSection() {
 
         <div className="contact-form-container">
           <form className="contact-form" onSubmit={handleSubmit}>
-            <h3>Send a Message</h3>
+            <div className="contact-form-header">
+              <div className="contact-form-title-wrap">
+                <span className="contact-sparkle-dot">✦</span>
+                <h3>Send a Message</h3>
+              </div>
+              <span className="contact-form-hint">Fast Response Guaranteed</span>
+            </div>
+
+            {/* Quick Topic Chips */}
+            <div className="contact-quick-chips">
+              <span className="quick-chips-label">Quick topics:</span>
+              <div className="quick-chips-list">
+                {QUICK_TOPICS.map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    className={`quick-chip-btn ${formData.subject === t.subject ? "active" : ""}`}
+                    onClick={() => handleQuickTopic(t)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {status && (
               <div className={`contact-status-box status-${status.type}`}>
-                {status.type === "success" ? "✓ " : "⚠️ "}
-                {status.message}
+                <span className="status-icon-anim">
+                  {status.type === "success" ? "🎉" : "⚠️"}
+                </span>
+                <span>{status.message}</span>
               </div>
             )}
 
@@ -164,31 +215,49 @@ function ContactSection() {
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="contact-message">Message *</label>
-              <textarea
-                id="contact-message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                placeholder="Describe your workflow challenge, question, or integration request..."
-                rows={5}
-                required
-              />
+            {/* Animated Message Textarea Box */}
+            <div className={`form-group animated-message-group ${isMessageFocused ? "is-focused" : ""} ${formData.message.length > 0 ? "has-content" : ""}`}>
+              <div className="message-label-row">
+                <label htmlFor="contact-message">Message *</label>
+                <span className="message-char-count">
+                  {formData.message.length} / 1000 characters
+                </span>
+              </div>
+              <div className="message-input-shell">
+                <textarea
+                  id="contact-message"
+                  name="message"
+                  value={formData.message}
+                  onChange={handleChange}
+                  onFocus={() => setIsMessageFocused(true)}
+                  onBlur={() => setIsMessageFocused(false)}
+                  placeholder="Describe your workflow challenge, custom requirements, or inquiry..."
+                  rows={5}
+                  maxLength={1000}
+                  required
+                />
+                <div className="message-glow-bar" />
+              </div>
             </div>
 
+            {/* Animated Send Message Button */}
             <button
               type="submit"
-              className="primary-btn submit-contact-btn"
+              className={`primary-btn submit-contact-btn animated-send-btn ${isSubmitting ? "is-sending" : ""}`}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
-                  <span className="spinner" /> Sending Message...
+                  <span className="contact-beacon-spinner" />
+                  <span>Delivering Message...</span>
                 </>
               ) : (
                 <>
-                  Send Message <span className="btn-arrow">→</span>
+                  <span className="send-btn-content">
+                    <span>Send Message</span>
+                    <SendPlaneIcon />
+                  </span>
+                  <span className="send-btn-shine" />
                 </>
               )}
             </button>

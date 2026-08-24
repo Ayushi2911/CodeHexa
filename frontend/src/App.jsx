@@ -10,6 +10,7 @@ import HelpSection from "./components/HelpSection";
 import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
 import AuthModal from "./components/auth/AuthModal";
+import ProfileModal from "./components/auth/ProfileModal";
 import { useAuth } from "./context/AuthContext";
 import { workflowApi } from "./services/api";
 
@@ -1336,8 +1337,9 @@ function App() {
         </div>
       )}
 
-      {/* AUTHENTICATION MODAL (LOGIN & SIGN UP) */}
+      {/* AUTHENTICATION & PROFILE MODALS */}
       <AuthModal />
+      <ProfileModal />
     </div>
   );
 }

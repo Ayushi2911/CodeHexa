@@ -30,6 +30,21 @@ const userSchema = new mongoose.Schema(
       default: "Global",
       trim: true,
     },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Non-binary", "Prefer not to say", ""],
+      default: "",
+    },
+    lastConnectedArea: {
+      type: String,
+      default: "Local Session / Global",
+      trim: true,
+    },
     authProvider: {
       type: String,
       enum: ["local", "google"],
