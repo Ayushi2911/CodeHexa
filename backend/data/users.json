@@ -1,0 +1,41 @@
+[
+  {
+    "id": "user-demo-001",
+    "_id": "user-demo-001",
+    "name": "Demo Developer",
+    "email": "demo@codehexa.com",
+    "password": "password123",
+    "country": "India",
+    "location": "Bangalore",
+    "authProvider": "local",
+    "avatar": "",
+    "createdAt": "2026-08-24T06:08:48.849Z",
+    "updatedAt": "2026-08-24T06:08:48.851Z"
+  },
+  {
+    "id": "user_1787551728876_wnocd",
+    "_id": "user_1787551728876_wnocd",
+    "name": "Test User",
+    "email": "test.user@example.com",
+    "password": "secretPassword123",
+    "country": "India",
+    "location": "Mumbai",
+    "authProvider": "local",
+    "avatar": "",
+    "createdAt": "2026-08-24T06:08:48.876Z",
+    "updatedAt": "2026-08-24T06:08:48.876Z"
+  },
+  {
+    "id": "user_1787551728886_h8l5p",
+    "_id": "user_1787551728886_h8l5p",
+    "name": "Google Explorer",
+    "email": "explorer@gmail.com",
+    "password": "",
+    "country": "United States",
+    "location": "San Francisco",
+    "authProvider": "google",
+    "avatar": "",
+    "createdAt": "2026-08-24T06:08:48.886Z",
+    "updatedAt": "2026-08-24T06:08:48.886Z"
+  }
+]
