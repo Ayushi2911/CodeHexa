@@ -517,12 +517,14 @@ section[id] {
   border-radius: 50%;
   pointer-events: none;
   z-index: 1;
+  max-width: 90vw;
+  max-height: 90vw;
 }
 
 /* Inner Orbit - Clockwise Loading Line covering the circle */
 .hero-orbit-one {
-  width: 550px;
-  height: 550px;
+  width: min(550px, 85vw);
+  height: min(550px, 85vw);
   border: 1.5px solid rgba(168, 85, 247, 0.08);
   border-top: 2.5px solid rgba(192, 132, 252, 0.75);
   border-right: 2px solid rgba(168, 85, 247, 0.25);
@@ -538,8 +540,8 @@ section[id] {
 
 /* Outer Orbit - Counter-Clockwise Loading Line covering the circle */
 .hero-orbit-two {
-  width: 650px;
-  height: 650px;
+  width: min(650px, 92vw);
+  height: min(650px, 92vw);
   border: 1.5px solid rgba(56, 189, 248, 0.06);
   border-bottom: 2.5px solid rgba(56, 189, 248, 0.75);
   border-left: 2px solid rgba(99, 102, 241, 0.25);
@@ -565,8 +567,8 @@ section[id] {
 
 .hero-glow {
   position: absolute;
-  width: 450px;
-  height: 450px;
+  width: min(450px, 80vw);
+  height: min(450px, 80vw);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(124, 92, 255, 0.22) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%);
   filter: blur(45px);
@@ -583,7 +585,9 @@ section[id] {
 /* Workflow Stage Container for Balanced Positioning */
 .hero-workflow-stage {
   position: relative;
-  width: 450px;
+  width: 100%;
+  max-width: 450px;
+  margin: 0 auto;
   z-index: 3;
 }
 
@@ -8212,3 +8216,589 @@ section[id] {
   50% { transform: scale(1.3); }
   100% { transform: scale(1); }
 }
+
+/* ==========================================================================
+   COMPREHENSIVE RESPONSIVE DESIGN & MOBILE NAVIGATION
+   ========================================================================== */
+
+/* ==========================================================================
+   EXHAUSTIVE RESPONSIVE DESIGN SUITE (ALL SCREENS & MOBILE TABLETS)
+   ========================================================================== */
+
+/* Global boundary protections against viewport blowout */
+html, body {
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+
+.app {
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Nav container constraints */
+.nav-container {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mobile-nav-toggle-wrap {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-mobile-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-mobile-toggle:hover,
+.nav-mobile-toggle.open {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.mobile-theme-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile Drawer Overlay */
+.mobile-nav-drawer {
+  position: fixed;
+  top: 74px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.mobile-nav-content {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-subtle);
+  max-height: calc(100vh - 74px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.mobile-auth-header {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.mobile-guest-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-guest-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.mobile-auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mobile-user-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-user-info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.mobile-user-info-row:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.mobile-logout-btn {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+.mobile-nav-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--text-primary);
+  transform: translateX(4px);
+}
+
+.mobile-history-item {
+  margin-top: 8px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: var(--accent-primary);
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ==========================================================================
+   BREAKPOINT 1: LAPTOPS & DESKTOPS (<= 1200px)
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .navbar {
+    padding: 0 4%;
+  }
+
+  .nav-link {
+    font-size: 13.5px;
+    padding: 8px 6px;
+  }
+
+  .hero {
+    gap: 40px;
+    padding: 60px 4%;
+  }
+
+  .dashboard-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT 2: TABLETS & LARGE PHONES (<= 1024px)
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .desktop-nav-links {
+    display: none !important;
+  }
+
+  .desktop-actions {
+    display: none !important;
+  }
+
+  .mobile-nav-toggle-wrap {
+    display: flex;
+  }
+
+  .navbar {
+    padding: 0 20px;
+  }
+
+  /* Hero Section */
+  .hero {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 40px 20px;
+    gap: 48px;
+    overflow: hidden;
+    min-height: unset;
+  }
+
+  .hero-content {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .hero-description {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hero-stats {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 20px 32px;
+  }
+
+  .hero-visual {
+    width: 100%;
+    max-width: 100%;
+    min-height: unset;
+    overflow: visible;
+  }
+
+  .hero-workflow-stage {
+    width: 100%;
+    max-width: min(92vw, 440px);
+  }
+
+  /* Studio layout */
+  .studio-main-grid,
+  .workflow-workspace-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .step-inspector,
+  .step-inspector-card {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .diagram-scroll-container,
+  .diagram-scroll-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Templates & Features */
+  .templates-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+
+  .feature-grid,
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+
+  /* Dashboard */
+  .dashboard-charts-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .capabilities-list-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Contact */
+  .contact-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .contact-channels {
+    order: 2;
+  }
+
+  .contact-form-container {
+    order: 1;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT 3: TABLETS PORTRAIT & SMARTPHONES (<= 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: clamp(30px, 7vw, 44px);
+    line-height: 1.15;
+  }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding-top: 20px;
+  }
+
+  .hero-stat {
+    align-items: center;
+  }
+
+  .floating-ai {
+    top: -10px;
+    left: -10px;
+    transform: scale(0.85);
+  }
+
+  .floating-validation {
+    top: 80px;
+    right: -10px;
+    transform: scale(0.85);
+  }
+
+  .floating-integrations {
+    bottom: 50px;
+    left: -10px;
+    transform: scale(0.85);
+  }
+
+  .studio-header-row,
+  .studio-top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .studio-header-actions,
+  .studio-top-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .studio-header-actions button,
+  .studio-top-actions button {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .templates-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .feature-grid,
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .capabilities-list-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-two-col-grid,
+  .profile-form-grid,
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .profile-hero-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profile-badges-row {
+    justify-content: center;
+  }
+
+  .profile-actions-bar {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .profile-actions-bar button {
+    width: 100%;
+  }
+
+  .profile-right-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .auth-modal-card,
+  .profile-modal-card,
+  .template-modal-card,
+  .recent-workflows-modal-content {
+    width: 95vw;
+    max-width: 95vw;
+    padding: 20px 16px;
+    max-height: 94vh;
+    border-radius: 16px;
+  }
+
+  .history-panel-drawer {
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 28px;
+  }
+
+  .footer-links-col {
+    align-items: center;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT 4: STANDARD & SMALL MOBILE DEVICES (<= 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .navbar {
+    padding: 0 14px;
+    height: 64px;
+  }
+
+  main {
+    padding-top: 64px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .hero {
+    padding: 28px 14px;
+    gap: 32px;
+  }
+
+  .hero-eyebrow {
+    font-size: 11px;
+    padding: 5px 12px;
+  }
+
+  .hero h1 {
+    font-size: clamp(26px, 8vw, 36px);
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hero-buttons button,
+  .hero-buttons a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .hero-workflow-shell {
+    padding: 18px 14px;
+    min-height: 420px;
+  }
+
+  .floating-ai,
+  .floating-validation,
+  .floating-integrations {
+    display: none; /* Hide decorative floating chips on ultra-small screens */
+  }
+
+  .dashboard-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-auth-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-form-container {
+    padding: 16px 14px;
+  }
+
+  .contact-quick-chips {
+    padding: 8px;
+  }
+
+  .quick-chip-btn {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINT 5: ULTRA COMPACT DEVICES (<= 360px)
+   ========================================================================== */
+@media (max-width: 360px) {
+  .logo span {
+    display: none;
+  }
+
+  .hero h1 {
+    font-size: 24px;
+  }
+
+  .hero-description {
+    font-size: 14px;
+  }
+
+  .auth-modal-card,
+  .profile-modal-card {
+    padding: 16px 12px;
+  }
+}
+
