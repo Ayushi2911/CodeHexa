@@ -146,12 +146,20 @@ const fallbackRecentWorkflows = [
 function App() {
   const { isGuest, requireAuth } = useAuth();
   const [showHistory, setShowHistory] = useState(false);
-  const [executionHistory, setExecutionHistory] = useState([]);
+  const [executionHistory, setExecutionHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem("codehexa_execution_history");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [dashboardStats, setDashboardStats] = useState(fallbackDashboardStats);
   const [templates, setTemplates] = useState(fallbackTemplates);
   const [recentWorkflows, setRecentWorkflows] = useState(fallbackRecentWorkflows);
   const [selectedRecentWorkflow, setSelectedRecentWorkflow] = useState(null);
   const [activeTemplate, setActiveTemplate] = useState("");
+  const [prefillWorkflow, setPrefillWorkflow] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [activeSection, setActiveSection] = useState("home");
@@ -296,10 +304,11 @@ function App() {
 
   const refreshDashboardData = async () => {
     try {
-      const [statsResult, templatesResult, recentResult] = await Promise.allSettled([
+      const [statsResult, templatesResult, recentResult, historyResult] = await Promise.allSettled([
         workflowApi.getStats(),
         workflowApi.getTemplates(),
         workflowApi.getRecentWorkflows(),
+        workflowApi.getHistory(),
       ]);
 
       const statsData = statsResult.status === "fulfilled"
@@ -311,8 +320,19 @@ function App() {
         : fallbackTemplates;
 
       const recentData = recentResult.status === "fulfilled"
-        ? (recentResult.value.data?.workflows || recentResult.value.data || fallbackRecentWorkflows)
+        ? (recentResult.value.data?.workflows || recentResult.value.data?.data || recentResult.value.data || fallbackRecentWorkflows)
         : fallbackRecentWorkflows;
+
+      if (historyResult.status === "fulfilled" && historyResult.value.data?.data?.length > 0) {
+        setExecutionHistory((prev) => {
+          const backendItems = historyResult.value.data.data;
+          const merged = [...backendItems, ...prev.filter((p) => !backendItems.some((b) => b.id === p.id))];
+          try {
+            localStorage.setItem("codehexa_execution_history", JSON.stringify(merged));
+          } catch (_) {}
+          return merged;
+        });
+      }
 
       setDashboardStats(statsData);
       setTemplates(templatesData);
@@ -372,7 +392,7 @@ function App() {
 
   /*
    * =========================================================
-   * NAVIGATION
+   * NAVIGATION & STUDIO WORKFLOW OPENING
    * =========================================================
    */
 
@@ -382,6 +402,77 @@ function App() {
       ?.scrollIntoView({
         behavior: "smooth"
       });
+  };
+
+  const handleOpenWorkflowInStudio = (wf) => {
+    if (!wf) return;
+    setPreviewTemplate(null);
+    setSelectedRecentWorkflow(null);
+    setShowHistory(false);
+
+    // Build the complete workflow structure
+    const fullWf = wf.fullWorkflow || wf;
+    const workflowToLoad = {
+      id: fullWf.id || fullWf.workflowId || fullWf._id || `wf-${Date.now()}`,
+      name: fullWf.name || fullWf.workflowName || "Workflow",
+      status: fullWf.status || "active",
+      version: fullWf.version || 1,
+      confidence: fullWf.confidence || 0.92,
+      requirement: fullWf.requirement || `When an event occurs, execute steps for ${fullWf.name || "business flow"}.`,
+      trigger: fullWf.trigger || {
+        id: "trigger-1",
+        name: fullWf.triggerType || "Webhook Trigger",
+        source: fullWf.triggerSource || "webhook.events"
+      },
+      steps: (fullWf.steps || []).map((s, idx) => {
+        const stepId = s.id || s.stepId || `step-00${idx + 1}`;
+        return {
+          id: stepId,
+          stepId: stepId,
+          name: s.name || s.stepName || `Step ${idx + 1}`,
+          type: s.type?.includes("Form") ? "formCreate" : (s.type?.includes("Operation") ? "operation" : (s.actionType || s.type || "function")),
+          actionType: s.type?.includes("Form") ? "formCreate" : (s.type?.includes("Operation") ? "operation" : (s.actionType || s.type || "function")),
+          target: s.target || (s.type?.includes(":") ? s.type.split(":")[1]?.trim() : s.name),
+          order: idx + 1,
+          status: s.status || "pending",
+          inputMapping: s.inputMapping || {},
+          condition: s.condition || null,
+          onSuccess: idx < (fullWf.steps.length - 1) ? (fullWf.steps[idx + 1].id || fullWf.steps[idx + 1].stepId || `step-00${idx + 2}`) : "complete",
+          onFailure: "abort"
+        };
+      })
+    };
+
+    setPrefillWorkflow(workflowToLoad);
+    openBuilder();
+  };
+
+  const handleNewWorkflowCreated = (newWf) => {
+    if (!newWf) return;
+    const formattedRecent = {
+      id: newWf.id || `wf-${Date.now()}`,
+      name: newWf.name || "Generated Workflow",
+      status: newWf.status || "draft",
+      version: newWf.version || 1,
+      lastTriggered: "Just now",
+      triggerType: newWf.trigger?.name || "Webhook Trigger",
+      triggerSource: newWf.trigger?.source || "webhook.events",
+      executionTimeMs: Math.floor(Math.random() * 60) + 110,
+      engine: "AWS Bedrock Qwen + DAG Runtime Engine (v2.4)",
+      confidence: newWf.confidence || 0.94,
+      requirement: newWf.requirement || "",
+      steps: (newWf.steps || []).map((s) => ({
+        id: s.id || s.stepId,
+        name: s.name,
+        type: s.type || s.actionType || "function",
+        duration: "35ms",
+        status: s.status || "success"
+      })),
+      capabilities: ["Multiple workflow cards", "Retry on failure (3x)", "Webhook trigger", "Workflow versioning", "Confidence score", "Dry run safe"]
+    };
+
+    setRecentWorkflows((prev) => [formattedRecent, ...prev.filter((w) => w.id !== formattedRecent.id)]);
+    updateDashboardFromWorkflow(newWf);
   };
 
   const openHistory = () => {
@@ -451,7 +542,9 @@ function App() {
         <WorkflowBuilder
           onHistoryChange={handleHistoryChange}
           prefillRequirement={activeTemplate}
+          prefillWorkflow={prefillWorkflow}
           onWorkflowChange={handleWorkflowChange}
+          onNewWorkflowCreated={handleNewWorkflowCreated}
         />
 
 
@@ -873,21 +966,42 @@ function App() {
                 <button
                   className="primary-btn template-modal-use-btn"
                   onClick={() => {
-                    const req = previewTemplate.requirement;
+                    const selected = previewTemplate;
                     setPreviewTemplate(null);
+                    const templateWorkflow = {
+                      name: selected.name,
+                      requirement: selected.requirement,
+                      status: "draft",
+                      version: 1,
+                      confidence: 0.95,
+                      trigger: { name: selected.trigger || "Webhook Trigger", source: "events" },
+                      steps: (selected.steps || []).map((stepName, sIdx) => ({
+                        id: `step-00${sIdx + 1}`,
+                        stepId: `step-00${sIdx + 1}`,
+                        name: stepName,
+                        type: "function",
+                        actionType: "function",
+                        target: stepName.replace(/\s+/g, ""),
+                        order: sIdx + 1,
+                        status: "pending",
+                        inputMapping: {},
+                        condition: null,
+                        onSuccess: sIdx < (selected.steps.length - 1) ? `step-00${sIdx + 2}` : "complete",
+                        onFailure: "abort",
+                      })),
+                    };
+
                     if (isGuest) {
                       requireAuth(() => {
-                        setActiveTemplate(req);
-                        openBuilder();
+                        handleOpenWorkflowInStudio(templateWorkflow);
                       }, "Sign in or register to load and customize this starter template.");
                     } else {
-                      setActiveTemplate(req);
-                      openBuilder();
+                      handleOpenWorkflowInStudio(templateWorkflow);
                     }
                   }}
                   type="button"
                 >
-                  ✦ Use This Template →
+                  ✦ Open in Workflow Studio →
                 </button>
               </div>
             </div>
@@ -1000,16 +1114,14 @@ function App() {
                 <button
                   className="primary-btn template-modal-use-btn"
                   onClick={() => {
-                    const req = selectedRecentWorkflow.requirement;
+                    const selected = selectedRecentWorkflow;
                     setSelectedRecentWorkflow(null);
                     if (isGuest) {
                       requireAuth(() => {
-                        setActiveTemplate(req);
-                        openBuilder();
+                        handleOpenWorkflowInStudio(selected);
                       }, "Sign in or register to open this workflow in the visual editor.");
                     } else {
-                      setActiveTemplate(req);
-                      openBuilder();
+                      handleOpenWorkflowInStudio(selected);
                     }
                   }}
                   type="button"
@@ -1036,37 +1148,29 @@ function App() {
           ===================================================== */}
 
       {showHistory && (
-
         <div
           className="history-overlay"
           onClick={closeHistory}
         >
-
           <div
             className="history-panel"
             onClick={(event) =>
               event.stopPropagation()
             }
           >
-
             {/* -------------------------------------------------
                 HISTORY HEADER
                 ------------------------------------------------- */}
 
             <div className="history-panel-header">
-
               <div>
-
                 <p className="tag">
                   EXECUTION HISTORY
                 </p>
-
                 <h2>
                   Workflow History
                 </h2>
-
               </div>
-
 
               <button
                 className="history-close"
@@ -1074,7 +1178,6 @@ function App() {
                 type="button"
                 aria-label="Close history"
               >
-
                 <svg
                   width="18"
                   height="18"
@@ -1088,22 +1191,16 @@ function App() {
                   <path d="M6 6l12 12" />
                   <path d="M18 6 6 18" />
                 </svg>
-
               </button>
-
             </div>
-
 
             {/* =================================================
                 EMPTY HISTORY
                 ================================================= */}
 
             {executionHistory.length === 0 && (
-
               <div className="history-empty">
-
                 <div className="history-icon">
-
                   <svg
                     width="32"
                     height="32"
@@ -1114,156 +1211,130 @@ function App() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-
                     <path
                       d="M3 12a9 9 0 1 0 3-6.7"
                     />
-
                     <path d="M3 4v5h5" />
-
                     <path d="M12 7v5l3 2" />
-
                   </svg>
-
                 </div>
-
 
                 <h3>
                   No workflow runs yet
                 </h3>
 
-
                 <p>
-                  Run a workflow and its
-                  execution history will
-                  appear here.
+                  Generate or run a workflow and its
+                  execution history will appear here.
                 </p>
-
               </div>
-
             )}
-
 
             {/* =================================================
                 HISTORY LIST
                 ================================================= */}
 
             {executionHistory.length > 0 && (
-
               <div className="navbar-history-list">
-
                 <div className="history-summary">
-
                   <span>
                     {executionHistory.length}{" "}
-                    workflow run
+                    workflow item
                     {executionHistory.length !== 1
                       ? "s"
                       : ""}
                   </span>
-
                 </div>
 
-
-                {executionHistory.map(
-                  (execution, index) => (
-
-                    <div
-                      className="navbar-history-card"
-                      key={execution.id}
-                    >
-
-                      <div className="navbar-history-card-top">
-
-                        <div>
-
-                          <p className="history-run-number">
-                            RUN #
-                            {executionHistory.length -
-                              index}
-                          </p>
-
-
-                          <h3>
-                            {execution.workflowName}
-                          </h3>
-
-                        </div>
-
-
-                        <span
-                          className={`history-status history-${execution.status}`}
-                        >
-                          {execution.status}
-                        </span>
-
+                {executionHistory.map((execution, index) => (
+                  <div
+                    className="navbar-history-card"
+                    key={execution.id || `hist-${index}`}
+                  >
+                    <div className="navbar-history-card-top">
+                      <div>
+                        <p className="history-run-number">
+                          RUN #{executionHistory.length - index} • {execution.action?.toUpperCase() || "RUN"}
+                        </p>
+                        <h3>
+                          {execution.workflowName}
+                        </h3>
                       </div>
 
+                      <span
+                        className={`history-status history-${execution.status}`}
+                      >
+                        {execution.status}
+                      </span>
+                    </div>
 
-                      <div className="navbar-history-time">
-
+                    <div className="navbar-history-time">
+                      <span>
+                        Started {execution.startedAt}
+                      </span>
+                      {execution.completedAt && (
                         <span>
-                          Started{" "}
-                          {execution.startedAt}
+                          Completed {execution.completedAt}
                         </span>
+                      )}
+                      {execution.duration && (
+                        <span className="history-duration-pill">
+                          ⚡ {execution.duration}
+                        </span>
+                      )}
+                    </div>
 
-
-                        {execution.completedAt && (
-
-                          <span>
-                            Completed{" "}
-                            {execution.completedAt}
-                          </span>
-
-                        )}
-
-                      </div>
-
-
+                    {execution.steps && execution.steps.length > 0 && (
                       <div className="navbar-history-steps">
-
-                        {execution.steps.map(
-                          (step) => (
-
-                            <div
-                              className="navbar-history-step"
-                              key={step.stepId}
-                            >
-
-                              <span className="history-step-indicator">
-
-                                {step.status ===
-                                "success"
-                                  ? "✓"
-                                  : step.status ===
-                                    "running"
-                                  ? "●"
-                                  : step.status ===
-                                    "failed"
-                                  ? "!"
-                                  : "○"}
-
-                              </span>
-
-
-                              <span>
-                                {step.stepName}
-                              </span>
-
-
-                              <small>
-                                {step.status}
-                              </small>
-                            </div>
-                          ))}
-                        </div>
+                        {execution.steps.map((step) => (
+                          <div
+                            className="navbar-history-step"
+                            key={step.stepId || step.stepName}
+                          >
+                            <span className="history-step-indicator">
+                              {step.status === "success"
+                                ? "✓"
+                                : step.status === "running"
+                                ? "●"
+                                : step.status === "failed"
+                                ? "!"
+                                : "○"}
+                            </span>
+                            <span>
+                              {step.stepName}
+                            </span>
+                            <small>
+                              {step.duration || step.status}
+                            </small>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+
+                    <div className="history-card-actions">
+                      <button
+                        type="button"
+                        className="history-open-btn"
+                        onClick={() => {
+                          if (isGuest) {
+                            requireAuth(() => {
+                              handleOpenWorkflowInStudio(execution.fullWorkflow || execution);
+                            }, "Sign in to open this workflow in the visual editor.");
+                          } else {
+                            handleOpenWorkflowInStudio(execution.fullWorkflow || execution);
+                          }
+                        }}
+                      >
+                        ✦ Open in Workflow Studio →
+                      </button>
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        </div>
+      )}
 
       {/* AUTHENTICATION MODAL (LOGIN & SIGN UP) */}
       <AuthModal />

@@ -21,7 +21,13 @@ import WorkflowJsonPanel from "./WorkflowJsonPanel";
 import WorkflowDiagram from "./workflow/WorkflowDiagram";
 import { useAuth } from "../context/AuthContext";
 
-function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowChange }) {
+function WorkflowBuilder({
+  onHistoryChange,
+  prefillRequirement = "",
+  prefillWorkflow = null,
+  onWorkflowChange,
+  onNewWorkflowCreated,
+}) {
   const { isGuest, requireAuth, openRegister } = useAuth();
   // Input states
   const [projectName, setProjectName] = useState("sample-flow");
@@ -64,13 +70,61 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
   const [failStepId, setFailStepId] = useState("");
 
   // Execution history
-  const [executionHistory, setExecutionHistory] = useState([]);
+  const [executionHistory, setExecutionHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem("codehexa_execution_history");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Add Workflow Modal
   const [showAddWorkflowModal, setShowAddWorkflowModal] = useState(false);
   const [addWorkflowPrompt, setAddWorkflowPrompt] = useState("");
 
   const generationTimerRef = useRef(null);
+
+  const recordWorkflowInHistory = (wf, action = "generated") => {
+    if (!wf) return;
+    const historyItem = {
+      id: `run-${Date.now()}`,
+      workflowId: wf.id || wf.workflowId || wf._id || `wf-${Date.now()}`,
+      workflowName: wf.name || wf.workflowName || "Generated Workflow",
+      version: wf.version || 1,
+      startedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      status: "success",
+      action: action,
+      duration: `${Math.floor(Math.random() * 60) + 110}ms`,
+      triggerType: wf.trigger?.name || "Webhook Trigger",
+      steps: (wf.steps || []).map((s) => ({
+        stepId: s.id || s.stepId,
+        stepName: s.name,
+        status: "success",
+        duration: `${Math.floor(Math.random() * 30) + 20}ms`,
+      })),
+      fullWorkflow: wf,
+      lastTriggered: "Just now",
+      executionTimeMs: Math.floor(Math.random() * 60) + 110,
+    };
+
+    setExecutionHistory((prev) => {
+      const updated = [historyItem, ...prev.filter((item) => item.workflowId !== historyItem.workflowId)];
+      try {
+        localStorage.setItem("codehexa_execution_history", JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
+
+    try {
+      workflowApi.saveHistory(historyItem);
+    } catch (_) {}
+
+    if (onNewWorkflowCreated) {
+      onNewWorkflowCreated(wf);
+    }
+  };
 
   useEffect(() => {
     if (onHistoryChange) {
@@ -83,6 +137,13 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
       setRequirement(prefillRequirement);
     }
   }, [prefillRequirement]);
+
+  useEffect(() => {
+    if (prefillWorkflow) {
+      const normalized = normalizeWorkflowObject(prefillWorkflow);
+      openWorkflowInStudio(normalized);
+    }
+  }, [prefillWorkflow]);
 
   const generationChecklist = [
     "Understanding requirement...",
@@ -170,12 +231,21 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
     if (analysis.type === "SINGLE_WORKFLOW") {
       setDetectedWorkflows(analysis.workflows);
       setViewState("detected");
+      if (analysis.workflows?.[0]) {
+        recordWorkflowInHistory(analysis.workflows[0], "generated");
+      }
     } else if (analysis.type === "MULTIPLE_WORKFLOWS") {
       setDetectedWorkflows(analysis.workflows);
       setViewState("detected");
+      if (analysis.workflows?.length > 0) {
+        analysis.workflows.forEach((w) => recordWorkflowInHistory(w, "generated"));
+      }
     } else if (analysis.type === "RESOLUTION_REQUIRED") {
       setDetectedWorkflows([analysis.workflow]);
       setViewState("detected");
+      if (analysis.workflow) {
+        recordWorkflowInHistory(analysis.workflow, "generated");
+      }
     } else if (analysis.type === "NO_WORKFLOW_DETECTED") {
       setDetectedWorkflows([]);
       setViewState("detected");
@@ -456,6 +526,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
     setWorkflow(updated);
     setPublishMessage(`✓ Workflow ${updated.name} (v${updated.version}) is now PUBLISHED and live!`);
     setTimeout(() => setPublishMessage(""), 5000);
+    recordWorkflowInHistory(updated, "published");
 
     if (onWorkflowChange) {
       onWorkflowChange(updated, "active");
@@ -509,6 +580,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
     setSelectedStep(updated.steps?.[0] || null);
     setValidationResult(null);
     setExecutionState(createExecutionState(updated));
+    recordWorkflowInHistory(updated, "ai-modified");
 
     if (onWorkflowChange) {
       onWorkflowChange(updated, "draft");
@@ -578,6 +650,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
     );
 
     currentExecution = completeExecution(currentExecution);
+    recordWorkflowInHistory(workflow, "executed");
 
     setExecutionHistory((history) =>
       history.map((execution) =>

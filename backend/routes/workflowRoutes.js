@@ -16,6 +16,9 @@ router.get("/",controller.getAll);
 
 router.get("/stats",controller.getStats);
 router.get("/templates",controller.getTemplates);
+router.get("/recent",controller.getRecent);
+router.get("/history",controller.getHistory);
+router.post("/history",controller.saveHistory);
 
 router.post("/validate",controller.validateEndpoint);
 

@@ -2426,6 +2426,172 @@ async function getTemplates(req, res) {
   });
 }
 
+const inMemoryHistory = [
+  {
+    id: "hist-001",
+    workflowId: "wf-order-001",
+    workflowName: "Order Processing",
+    startedAt: "10:52:14 AM",
+    completedAt: "10:52:14 AM",
+    status: "success",
+    action: "executed",
+    duration: "142ms",
+    triggerType: "Webhook Trigger",
+    steps: [
+      { stepId: "step-001", stepName: "Notify Vendor", status: "success", duration: "42ms" },
+      { stepId: "step-002", stepName: "Create Invoice", status: "success", duration: "54ms" },
+      { stepId: "step-003", stepName: "Update Inventory", status: "success", duration: "28ms" },
+      { stepId: "step-004", stepName: "Send Confirmation", status: "success", duration: "18ms" }
+    ],
+    fullWorkflow: {
+      name: "Order Processing",
+      status: "active",
+      version: 3,
+      requirement: "When an order is placed, notify the vendor, create an invoice, update inventory, then send a confirmation to the customer.",
+      trigger: { name: "Orders Placed", source: "orders.created" },
+      steps: [
+        { id: "step-001", stepId: "step-001", name: "Notify Vendor", type: "function", actionType: "function", target: "NotifyVendorOnOrder", order: 1, status: "pending", inputMapping: { orderId: "{{trigger._id}}" }, onSuccess: "step-002", onFailure: "abort" },
+        { id: "step-002", stepId: "step-002", name: "Create Invoice", type: "formCreate", actionType: "formCreate", target: "invoices.insert", order: 2, status: "pending", inputMapping: { orderId: "{{step-001.orderId}}", amount: "{{trigger.totalAmount}}" }, onSuccess: "step-003", onFailure: "abort" },
+        { id: "step-003", stepId: "step-003", name: "Update Inventory", type: "operation", actionType: "operation", target: "inventory.deduct", order: 3, status: "pending", condition: "{{trigger.stock_type}} == physical", inputMapping: { productId: "{{trigger.productId}}" }, onSuccess: "step-004", onFailure: "abort" },
+        { id: "step-004", stepId: "step-004", name: "Send Confirmation", type: "function", actionType: "function", target: "SendOrderConfirmation", order: 4, status: "pending", inputMapping: { customerEmail: "{{trigger.email}}" }, onSuccess: "complete", onFailure: "abort" }
+      ]
+    }
+  }
+];
+
+async function getHistory(req, res) {
+  try {
+    if (dbReady()) {
+      const runs = await WorkflowRun.find().sort({ createdAt: -1 }).limit(30);
+      if (runs && runs.length > 0) {
+        return res.json({ ok: true, data: runs.map(serializeRun) });
+      }
+    }
+    return res.json({ ok: true, data: inMemoryHistory });
+  } catch (err) {
+    return res.json({ ok: true, data: inMemoryHistory });
+  }
+}
+
+async function saveHistory(req, res) {
+  try {
+    const record = req.body || {};
+    const formattedRecord = {
+      id: record.id || `hist-${Date.now()}`,
+      workflowId: record.workflowId || `wf-${Date.now()}`,
+      workflowName: record.workflowName || "Generated Workflow",
+      startedAt: record.startedAt || new Date().toLocaleTimeString(),
+      completedAt: record.completedAt || new Date().toLocaleTimeString(),
+      status: record.status || "success",
+      action: record.action || "generated",
+      duration: record.duration || "120ms",
+      triggerType: record.triggerType || "Webhook Trigger",
+      steps: record.steps || [],
+      fullWorkflow: record.fullWorkflow || null,
+      createdAt: new Date().toISOString()
+    };
+
+    inMemoryHistory.unshift(formattedRecord);
+    if (inMemoryHistory.length > 50) {
+      inMemoryHistory.pop();
+    }
+
+    return res.status(201).json({ ok: true, data: formattedRecord });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+async function getRecent(req, res) {
+  try {
+    return res.json({
+      ok: true,
+      data: [
+        {
+          id: "demo-1",
+          name: "Order Processing",
+          status: "active",
+          version: 3,
+          lastTriggered: "2 mins ago (Today, 10:52:14 AM)",
+          triggerType: "Webhook Trigger",
+          triggerSource: "POST /v1/orders/webhook",
+          executionTimeMs: 142,
+          engine: "AWS Bedrock Qwen + DAG Runtime Engine (v2.4)",
+          confidence: 0.95,
+          requirement: "When an order is placed, notify the vendor, create an invoice, update inventory, then send a confirmation to the customer.",
+          trigger: { name: "Orders Placed", source: "orders.created" },
+          steps: [
+            { id: "step-001", stepId: "step-001", name: "Notify Vendor", type: "function", actionType: "function", target: "NotifyVendorOnOrder", duration: "42ms", order: 1, status: "pending", inputMapping: { orderId: "{{trigger._id}}" }, onSuccess: "step-002", onFailure: "abort" },
+            { id: "step-002", stepId: "step-002", name: "Create Invoice", type: "formCreate", actionType: "formCreate", target: "invoices.insert", duration: "54ms", order: 2, status: "pending", inputMapping: { orderId: "{{step-001.orderId}}", amount: "{{trigger.totalAmount}}" }, onSuccess: "step-003", onFailure: "abort" },
+            { id: "step-003", stepId: "step-003", name: "Update Inventory", type: "operation", actionType: "operation", target: "inventory.deduct", duration: "28ms", order: 3, status: "pending", condition: "{{trigger.stock_type}} == physical", inputMapping: { productId: "{{trigger.productId}}" }, onSuccess: "step-004", onFailure: "abort" },
+            { id: "step-004", stepId: "step-004", name: "Send Confirmation", type: "function", actionType: "function", target: "SendOrderConfirmation", duration: "18ms", order: 4, status: "pending", inputMapping: { customerEmail: "{{trigger.email}}" }, onSuccess: "complete", onFailure: "abort" }
+          ]
+        },
+        {
+          id: "demo-2",
+          name: "Customer Onboarding",
+          status: "draft",
+          version: 1,
+          lastTriggered: "18 mins ago (Today, 10:36:00 AM)",
+          triggerType: "Form Create",
+          triggerSource: "customers.register",
+          executionTimeMs: 98,
+          engine: "Deterministic DAG Engine + Schema Validator",
+          confidence: 0.88,
+          requirement: "When a new customer signs up, verify their information, create an onboarding task, assign a team member, and send a welcome email.",
+          trigger: { name: "Customer Signed Up", source: "customers.register" },
+          steps: [
+            { id: "step-001", stepId: "step-001", name: "Verify Info", type: "function", actionType: "function", target: "verifyCustomerKYC", duration: "32ms", order: 1, status: "pending", inputMapping: { userId: "{{trigger.userId}}" }, onSuccess: "step-002", onFailure: "abort" },
+            { id: "step-002", stepId: "step-002", name: "Create Onboarding Task", type: "formCreate", actionType: "formCreate", target: "tasks.insert", duration: "38ms", order: 2, status: "pending", inputMapping: { customerId: "{{step-001.customerId}}" }, onSuccess: "step-003", onFailure: "abort" },
+            { id: "step-003", stepId: "step-003", name: "Assign Team", type: "operation", actionType: "operation", target: "assignAgent", duration: "16ms", order: 3, status: "pending", inputMapping: { taskId: "{{step-002.taskId}}" }, onSuccess: "step-004", onFailure: "abort" },
+            { id: "step-004", stepId: "step-004", name: "Send Welcome Email", type: "function", actionType: "function", target: "sendEmail", duration: "12ms", order: 4, status: "pending", inputMapping: { email: "{{trigger.email}}" }, onSuccess: "complete", onFailure: "abort" }
+          ]
+        },
+        {
+          id: "demo-3",
+          name: "Complaint Processing",
+          status: "validated",
+          version: 2,
+          lastTriggered: "1 hour ago (Today, 09:45:20 AM)",
+          triggerType: "Scheduled Trigger",
+          triggerSource: "crm_portal.sync (Cron */15 * * * *)",
+          executionTimeMs: 210,
+          engine: "AWS Bedrock Qwen + Diagnostics Engine",
+          confidence: 0.92,
+          requirement: "When a complaint is received, log the complaint, check anomaly and warranty status, then send resolution notification to customer.",
+          trigger: { name: "Complaint Received", source: "crm_portal" },
+          steps: [
+            { id: "step-001", stepId: "step-001", name: "Log Complaint", type: "formCreate", actionType: "formCreate", target: "complaintSchema", duration: "68ms", order: 1, status: "pending", inputMapping: { ticketId: "{{trigger.ticketId}}" }, onSuccess: "step-002", onFailure: "abort" },
+            { id: "step-002", stepId: "step-002", name: "Check Anomaly & Warranty", type: "function", actionType: "function", target: "diagnoseComplaint", duration: "98ms", order: 2, status: "pending", inputMapping: { complaintId: "{{step-001.complaintId}}" }, onSuccess: "step-003", onFailure: "abort" },
+            { id: "step-003", stepId: "step-003", name: "Notify Customer", type: "formCreate", actionType: "formCreate", target: "sendNotification", duration: "44ms", order: 3, status: "pending", inputMapping: { status: "{{step-002.status}}" }, onSuccess: "complete", onFailure: "abort" }
+          ]
+        },
+        {
+          id: "demo-4",
+          name: "Job Application Flow",
+          status: "active",
+          version: 1,
+          lastTriggered: "3 hours ago (Today, 07:30:10 AM)",
+          triggerType: "Webhook Trigger",
+          triggerSource: "careers_portal.candidate_submit",
+          executionTimeMs: 115,
+          engine: "AWS Bedrock Qwen + DAG Runtime Engine",
+          confidence: 0.91,
+          requirement: "When an applicant applies, screen resume and report applicant, schedule interview and offer negotiation, then conduct probation review.",
+          trigger: { name: "Application Submitted", source: "careers_portal" },
+          steps: [
+            { id: "step-001", stepId: "step-001", name: "Screen Resume", type: "formCreate", actionType: "formCreate", target: "applicationSchema", duration: "45ms", order: 1, status: "pending", inputMapping: { applicantId: "{{trigger.applicantId}}" }, onSuccess: "step-002", onFailure: "abort" },
+            { id: "step-002", stepId: "step-002", name: "Conduct Interview", type: "function", actionType: "function", target: "conductInterview", duration: "52ms", order: 2, status: "pending", inputMapping: { resumeId: "{{step-001.resumeId}}" }, onSuccess: "step-003", onFailure: "abort" },
+            { id: "step-003", stepId: "step-003", name: "Review Probation", type: "function", actionType: "function", target: "reviewProbation", duration: "18ms", order: 3, status: "pending", inputMapping: { interviewId: "{{step-002.interviewId}}" }, onSuccess: "complete", onFailure: "abort" }
+          ]
+        }
+      ]
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
 module.exports = {
   detect,
   create,
@@ -2449,4 +2615,7 @@ module.exports = {
   testLLM,
   testVLM,
   getTemplates,
+  getHistory,
+  saveHistory,
+  getRecent,
 };

@@ -77,4 +77,43 @@ describe("PS11 API Integration Tests", () => {
     assert.strictEqual(res.body.ok, true);
     assert.strictEqual(res.body.data.valid, true);
   });
+
+  it("should return recent workflows with step structures via getRecent", async () => {
+    const req = {};
+    const res = createMockRes();
+
+    await workflowController.getRecent(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data));
+    assert.ok(res.body.data.length >= 4);
+    assert.ok(res.body.data[0].steps.length >= 3);
+  });
+
+  it("should save and retrieve execution/generation history via saveHistory and getHistory", async () => {
+    const saveReq = {
+      body: {
+        workflowName: "Order Processing Unit Test",
+        action: "generated",
+        status: "success",
+        duration: "135ms",
+        steps: [{ stepName: "Step 1", status: "success" }],
+      },
+    };
+    const saveRes = createMockRes();
+
+    await workflowController.saveHistory(saveReq, saveRes);
+    assert.strictEqual(saveRes.statusCode, 201);
+    assert.strictEqual(saveRes.body.ok, true);
+    assert.strictEqual(saveRes.body.data.workflowName, "Order Processing Unit Test");
+
+    const getReq = {};
+    const getRes = createMockRes();
+    await workflowController.getHistory(getReq, getRes);
+    assert.strictEqual(getRes.statusCode, 200);
+    assert.strictEqual(getRes.body.ok, true);
+    assert.ok(Array.isArray(getRes.body.data));
+    const found = getRes.body.data.some((item) => item.workflowName === "Order Processing Unit Test");
+    assert.ok(found);
+  });
 });

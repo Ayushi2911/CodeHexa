@@ -27,6 +27,8 @@ export const workflowApi = {
     api.post(`/workflows/${workflowId}/apply-edit`, { patch }),
   testLLM: (prompt) => api.post("/workflows/llm/test", { prompt }),
   testVLM: (imageUrl, prompt) => api.post("/workflows/vlm/test", { imageUrl, prompt }),
+  getHistory: () => api.get("/workflows/history"),
+  saveHistory: (record) => api.post("/workflows/history", record),
 };
 
 export const authApi = {
