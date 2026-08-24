@@ -7,7 +7,7 @@ function Navbar({
   theme = "dark",
   onToggleTheme,
 }) {
-  const { user, isGuest, openLogin, openRegister, logout } = useAuth();
+  const { user, isGuest, openLogin, openRegister, logout, openProfileModal } = useAuth();
 
   const scrollTo = (e, targetId) => {
     e.preventDefault();
@@ -162,13 +162,19 @@ function Navbar({
           </div>
         ) : (
           <div className="nav-user-group">
-            <div className="nav-user-profile-chip" title={`${user.name} (${user.email}) - ${user.country || "Global"}`}>
+            <button
+              className="nav-user-profile-chip"
+              onClick={openProfileModal}
+              type="button"
+              title={`Click to manage profile: ${user.name} (${user.email})`}
+            >
               <span className="user-avatar-circle">{getInitials(user.name)}</span>
               <div className="user-name-col">
                 <strong className="nav-user-name">{user.name}</strong>
                 <small className="nav-user-loc">{user.location ? `${user.location}, ` : ""}{user.country || "Global"}</small>
               </div>
-            </div>
+              <span className="profile-chip-arrow">▾</span>
+            </button>
             <button
               className="nav-logout-btn"
               onClick={logout}

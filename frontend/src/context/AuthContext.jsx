@@ -90,20 +90,8 @@ export function AuthProvider({ children }) {
       }
       return { success: false, error: response.data?.error || "Login failed" };
     } catch (err) {
-      // Fallback offline simulated login
-      const fallbackUser = {
-        id: `user-${Date.now()}`,
-        name: email.split("@")[0] || "CodeHexa User",
-        email: email.trim().toLowerCase(),
-        country: "United States",
-        location: "Global",
-        authProvider: "local",
-      };
-      setUser(fallbackUser);
-      localStorage.setItem("codehexa_token", `mock_token_${Date.now()}`);
-      setShowAuthModal(false);
-      executePendingAction(fallbackUser);
-      return { success: true, user: fallbackUser };
+      const serverError = err.response?.data?.error || err.message || "Failed to log in. Please check your credentials.";
+      return { success: false, error: serverError };
     }
   };
 
@@ -125,34 +113,18 @@ export function AuthProvider({ children }) {
       }
       return { success: false, error: response.data?.error || "Registration failed" };
     } catch (err) {
-      // Fallback offline simulated registration
-      const fallbackUser = {
-        id: `user-${Date.now()}`,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        country: country || "United States",
-        location: location || "Global",
-        authProvider: "local",
-      };
-      setUser(fallbackUser);
-      localStorage.setItem("codehexa_token", `mock_token_${Date.now()}`);
-      setShowAuthModal(false);
-      executePendingAction(fallbackUser);
-      return { success: true, user: fallbackUser };
+      const serverError = err.response?.data?.error || err.message || "Failed to register. Please try again.";
+      return { success: false, error: serverError };
     }
   };
 
   /**
    * Google Sign In / Sign Up
    */
-  const googleSignIn = async (overrideData = {}) => {
-    const googleProfile = {
-      name: overrideData.name || "Alex Morgan",
-      email: overrideData.email || "alex.morgan@gmail.com",
-      country: overrideData.country || "United States",
-      location: overrideData.location || "California",
-      avatar: overrideData.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces",
-    };
+  const googleSignIn = async (googleProfile = {}) => {
+    if (!googleProfile.email) {
+      return { success: false, error: "Google email is required" };
+    }
 
     try {
       const response = await authApi.googleAuth(googleProfile);
@@ -166,24 +138,43 @@ export function AuthProvider({ children }) {
         executePendingAction(googleUser);
         return { success: true, user: googleUser };
       }
-    } catch (_) {
-      // Fallback
+      return { success: false, error: response.data?.error || "Google authentication failed" };
+    } catch (err) {
+      const serverError = err.response?.data?.error || err.message || "Google authentication failed.";
+      return { success: false, error: serverError };
     }
+  };
 
-    const fallbackGoogleUser = {
-      id: `google_${Date.now()}`,
-      name: googleProfile.name,
-      email: googleProfile.email,
-      country: googleProfile.country,
-      location: googleProfile.location,
-      avatar: googleProfile.avatar,
-      authProvider: "google",
-    };
-    setUser(fallbackGoogleUser);
-    localStorage.setItem("codehexa_token", `google_token_${Date.now()}`);
-    setShowAuthModal(false);
-    executePendingAction(fallbackGoogleUser);
-    return { success: true, user: fallbackGoogleUser };
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  const openProfileModal = () => {
+    setShowProfileModal(true);
+  };
+
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+  };
+
+  /**
+   * Update current user profile
+   */
+  const updateUserProfile = async (profileData) => {
+    try {
+      const response = await authApi.updateProfile({
+        currentEmail: user?.email,
+        ...profileData,
+      });
+
+      if (response.data?.ok && response.data?.user) {
+        const updatedUser = response.data.user;
+        setUser(updatedUser);
+        return { success: true, user: updatedUser, message: response.data.message || "Profile updated successfully!" };
+      }
+      return { success: false, error: response.data?.error || "Failed to update profile." };
+    } catch (err) {
+      const serverError = err.response?.data?.error || err.message || "Failed to update profile.";
+      return { success: false, error: serverError };
+    }
   };
 
   /**
@@ -191,6 +182,7 @@ export function AuthProvider({ children }) {
    */
   const logout = () => {
     setUser(null);
+    setShowProfileModal(false);
     localStorage.removeItem("codehexa_user");
     localStorage.removeItem("codehexa_token");
   };
@@ -199,6 +191,7 @@ export function AuthProvider({ children }) {
     user,
     isGuest: !user,
     showAuthModal,
+    showProfileModal,
     authMode,
     authMessage,
     setAuthMode,
@@ -209,6 +202,9 @@ export function AuthProvider({ children }) {
     openLogin,
     openRegister,
     closeAuthModal,
+    openProfileModal,
+    closeProfileModal,
+    updateUserProfile,
     requireAuth,
   };
 
