@@ -1,20 +1,132 @@
 const mongoose = require("mongoose");
 
-const workflowNodeSchema = new mongoose.Schema(
+const conditionSchema = new mongoose.Schema(
   {
-    id: {
+    field: {
       type: String,
       required: true,
     },
 
-    type: {
+    operator: {
+      type: String,
+      enum: [
+        "eq",
+        "neq",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "in",
+        "notIn",
+        "contains",
+        "exists",
+      ],
+      default: "eq",
+    },
+
+    value: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+const stepSchema = new mongoose.Schema(
+  {
+    stepId: {
       type: String,
       required: true,
     },
 
-    label: {
+    name: {
       type: String,
       required: true,
+    },
+
+    order: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+
+    actionType: {
+      type: String,
+      enum: [
+        "function",
+        "formCreate",
+        "formUpdate",
+        "formDelete",
+        "operation",
+      ],
+      required: true,
+    },
+
+    functionName: {
+      type: String,
+      default: null,
+    },
+
+    schema: {
+      type: String,
+      default: null,
+    },
+
+    formId: {
+      type: String,
+      default: null,
+    },
+
+    buttonId: {
+      type: String,
+      default: null,
+    },
+
+    inputMapping: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
+    condition: {
+      type: conditionSchema,
+      default: null,
+    },
+
+    onSuccess: {
+      type: String,
+      default: null,
+    },
+
+    onFailure: {
+      type: String,
+      default: "abort",
+    },
+
+    isDisabled: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+const workflowSchema = new mongoose.Schema(
+  {
+    projectName: {
+      type: String,
+      required: true,
+      index: true,
+      trim: true,
+    },
+
+    workflowName: {
+      type: String,
+      required: true,
+      trim: true,
     },
 
     description: {
@@ -22,73 +134,33 @@ const workflowNodeSchema = new mongoose.Schema(
       default: "",
     },
 
-    config: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-
-    position: {
-      x: {
-        type: Number,
-        default: 0,
-      },
-      y: {
-        type: Number,
-        default: 0,
-      },
-    },
-  },
-  { _id: false }
-);
-
-const workflowEdgeSchema = new mongoose.Schema(
-  {
-    id: {
-      type: String,
-      required: true,
-    },
-
-    source: {
-      type: String,
-      required: true,
-    },
-
-    target: {
-      type: String,
-      required: true,
-    },
-
-    label: {
-      type: String,
-      default: "",
-    },
-
-    condition: {
-      type: String,
-      default: "",
-    },
-  },
-  { _id: false }
-);
-
-const workflowSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
     requirement: {
       type: String,
-      required: true,
-      trim: true,
+      default: "",
     },
 
-    status: {
-      type: String,
-      enum: ["draft", "validated", "active", "archived"],
-      default: "draft",
+    triggerEvent: {
+      type: {
+        type: String,
+        enum: [
+          "formCreate",
+          "formUpdate",
+          "formDelete",
+          "manual",
+          "webhook",
+        ],
+        required: true,
+      },
+
+      schema: {
+        type: String,
+        default: null,
+      },
+    },
+
+    steps: {
+      type: [stepSchema],
+      default: [],
     },
 
     confidence: {
@@ -103,30 +175,64 @@ const workflowSchema = new mongoose.Schema(
       default: [],
     },
 
-    nodes: {
-      type: [workflowNodeSchema],
-      default: [],
+    isActive: {
+      type: Boolean,
+      default: false,
     },
 
-    edges: {
-      type: [workflowEdgeSchema],
-      default: [],
-    },
-
-    variables: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
 
     version: {
       type: Number,
       default: 1,
+      min: 1,
     },
 
-    source: {
+    status: {
       type: String,
-      enum: ["manual", "detected", "agent"],
-      default: "manual",
+      enum: ["draft", "published", "archived"],
+      default: "draft",
+    },
+
+    editSource: {
+      type: String,
+      enum: ["manual", "agent", "detection"],
+      default: "detection",
+    },
+
+    baseVersion: {
+      type: Number,
+      default: null,
+    },
+
+    familyId: {
+      type: String,
+      required: true,
+      index: true,
+    },
+
+    changeSummary: {
+      type: String,
+      default: "",
+    },
+
+    createdBy: {
+      type: String,
+      default: "system",
+    },
+
+    updatedBy: {
+      type: String,
+      default: "system",
+    },
+
+    publishedAt: {
+      type: Date,
+      default: null,
     },
   },
   {
@@ -134,6 +240,24 @@ const workflowSchema = new mongoose.Schema(
   }
 );
 
-const Workflow = mongoose.model("Workflow", workflowSchema);
+workflowSchema.index(
+  {
+    projectName: 1,
+    familyId: 1,
+    version: 1,
+  },
+  {
+    unique: true,
+  }
+);
 
-module.exports = Workflow;
+workflowSchema.index({
+  projectName: 1,
+  workflowName: 1,
+  status: 1,
+  isDeleted: 1,
+});
+
+module.exports =
+  mongoose.models.Workflow ||
+  mongoose.model("Workflow", workflowSchema);

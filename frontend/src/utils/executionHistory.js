@@ -1,12 +1,12 @@
 export function createExecutionRecord(workflow) {
   return {
     id: crypto.randomUUID(),
-    workflowId: workflow.workflowId,
+    workflowId: workflow.workflowId || workflow.id || workflow._id,
     workflowName: workflow.name,
     status: "running",
     startedAt: new Date().toLocaleTimeString(),
     completedAt: null,
-    steps: workflow.steps.map((step) => ({
+    steps: (workflow.steps || []).map((step) => ({
       stepId: step.id,
       stepName: step.name,
       status: "pending"
@@ -21,7 +21,7 @@ export function updateExecutionStep(
 ) {
   return {
     ...execution,
-    steps: execution.steps.map((step) =>
+    steps: (execution.steps || []).map((step) =>
       step.stepId === stepId
         ? { ...step, status }
         : step
