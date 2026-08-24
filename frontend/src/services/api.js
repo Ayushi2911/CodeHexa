@@ -28,3 +28,11 @@ export const workflowApi = {
   testLLM: (prompt) => api.post("/workflows/llm/test", { prompt }),
   testVLM: (imageUrl, prompt) => api.post("/workflows/vlm/test", { imageUrl, prompt }),
 };
+
+export const authApi = {
+  register: (userData) => api.post("/auth/register", userData),
+  login: (credentials) => api.post("/auth/login", credentials),
+  googleAuth: (googleData) => api.post("/auth/google", googleData),
+  getMe: () => api.get("/auth/me"),
+};
+

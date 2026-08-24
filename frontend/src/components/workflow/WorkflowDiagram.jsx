@@ -1,9 +1,15 @@
+import { useState } from "react";
+
 function WorkflowDiagram({
   workflow,
   executionState = [],
   selectedStepId,
   onSelectStep,
+  onReorderSteps,
 }) {
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
   if (!workflow) {
     return (
       <div className="workflow-diagram empty-diagram">
@@ -13,6 +19,40 @@ function WorkflowDiagram({
   }
 
   const steps = workflow.steps || [];
+
+  const handleDragStart = (e, index) => {
+    e.dataTransfer.setData("text/plain", String(index));
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const fromIndexStr = e.dataTransfer.getData("text/plain");
+    const fromIndex = Number(fromIndexStr);
+    if (!isNaN(fromIndex) && fromIndex !== targetIndex && onReorderSteps) {
+      onReorderSteps(fromIndex, targetIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   return (
     <div className="workflow-diagram">
@@ -52,8 +92,11 @@ function WorkflowDiagram({
 
         return (
           <div
-            className="workflow-node-wrapper"
+            className={`workflow-node-wrapper ${dragOverIndex === index ? "drag-target-active" : ""} ${draggedIndex === index ? "is-being-dragged" : ""}`}
             key={stepKey || index}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, index)}
           >
             <button
               type="button"
@@ -61,9 +104,18 @@ function WorkflowDiagram({
                 isSelected ? "selected" : ""
               } status-${status}`}
               onClick={() => onSelectStep(stepKey)}
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragEnd={handleDragEnd}
+              title="Click to inspect • Drag to reorder step"
             >
-              <div className="workflow-node-number">
-                {index + 1}
+              <div className="node-left-controls">
+                <span className="drag-grip-handle" title="Drag to reorder step">
+                  ⋮⋮
+                </span>
+                <div className="workflow-node-number">
+                  {index + 1}
+                </div>
               </div>
 
               <div className="workflow-node-content">

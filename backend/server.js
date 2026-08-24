@@ -29,30 +29,14 @@ app.use(
   })
 );
 
-const workflowRoutes =
-  require(
-    "./routes/workflowRoutes"
-  );
+const workflowRoutes = require("./routes/workflowRoutes");
+const formsRoutes = require("./routes/formsRoutes");
+const authRoutes = require("./routes/authRoutes");
 
-const formsRoutes =
-  require(
-    "./routes/formsRoutes"
-  );
-
-app.use(
-  "/api/workflows",
-  workflowRoutes
-);
-
-app.use(
-  "/workflow",
-  workflowRoutes
-);
-
-app.use(
-  "/forms",
-  formsRoutes
-);
+app.use("/api/auth", authRoutes);
+app.use("/api/workflows", workflowRoutes);
+app.use("/workflow", workflowRoutes);
+app.use("/forms", formsRoutes);
 
 app.get(
   "/",

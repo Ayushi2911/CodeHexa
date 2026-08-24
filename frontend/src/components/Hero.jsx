@@ -78,7 +78,19 @@ function PlugIcon() {
   );
 }
 
+import { useAuth } from "../context/AuthContext";
+
 function Hero({ onOpenBuilder }) {
+  const { isGuest, requireAuth } = useAuth();
+
+  const handleStartBuilding = () => {
+    if (isGuest) {
+      requireAuth(onOpenBuilder, "Sign in or register to launch the Workflow Studio");
+    } else {
+      onOpenBuilder();
+    }
+  };
+
   return (
     <section className="hero" id="home">
       <div className="hero-content">
@@ -101,7 +113,7 @@ function Hero({ onOpenBuilder }) {
         <div className="hero-buttons">
           <button
             className="primary-btn hero-primary-btn"
-            onClick={onOpenBuilder}
+            onClick={handleStartBuilding}
           >
             Start Building
             <span>→</span>

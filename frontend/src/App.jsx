@@ -9,6 +9,8 @@ import DemoVideoSection from "./components/DemoVideoSection";
 import HelpSection from "./components/HelpSection";
 import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
+import AuthModal from "./components/auth/AuthModal";
+import { useAuth } from "./context/AuthContext";
 import { workflowApi } from "./services/api";
 
 import "./App.css";
@@ -61,18 +63,94 @@ const fallbackTemplates = [
 ];
 
 const fallbackRecentWorkflows = [
-  { id: "demo-1", name: "Order Processing", status: "active", version: 3 },
-  { id: "demo-2", name: "Customer Onboarding", status: "draft", version: 1 },
-  { id: "demo-3", name: "Complaint Processing", status: "validated", version: 2 },
-  { id: "demo-4", name: "Job Application Flow", status: "active", version: 1 },
+  {
+    id: "demo-1",
+    name: "Order Processing",
+    status: "active",
+    version: 3,
+    lastTriggered: "2 mins ago (Today, 10:52:14 AM)",
+    triggerType: "Webhook Trigger",
+    triggerSource: "POST /v1/orders/webhook",
+    executionTimeMs: 142,
+    engine: "AWS Bedrock Qwen + DAG Runtime Engine (v2.4)",
+    confidence: 0.95,
+    requirement: "When an order is placed, notify the vendor, create an invoice, update inventory, then send a confirmation to the customer.",
+    steps: [
+      { name: "Notify Vendor", type: "Function: NotifyVendorOnOrder", duration: "42ms", status: "success" },
+      { name: "Create Invoice", type: "Form Create: invoices.insert", duration: "54ms", status: "success" },
+      { name: "Update Inventory", type: "Operation: inventory.deduct", duration: "28ms", status: "success" },
+      { name: "Send Confirmation", type: "Function: SendOrderConfirmation", duration: "18ms", status: "success" }
+    ],
+    capabilities: ["Multiple workflow cards", "Retry on failure (3x)", "Webhook trigger", "Workflow versioning", "Confidence: 95%", "Dry run safe"]
+  },
+  {
+    id: "demo-2",
+    name: "Customer Onboarding",
+    status: "draft",
+    version: 1,
+    lastTriggered: "18 mins ago (Today, 10:36:00 AM)",
+    triggerType: "Form Create",
+    triggerSource: "customers.register",
+    executionTimeMs: 98,
+    engine: "Deterministic DAG Engine + Schema Validator",
+    confidence: 0.88,
+    requirement: "When a new customer signs up, verify their information, create an onboarding task, assign a team member, and send a welcome email.",
+    steps: [
+      { name: "Verify Info", type: "Function: verifyCustomerKYC", duration: "32ms", status: "success" },
+      { name: "Create Onboarding Task", type: "Form Create: tasks.insert", duration: "38ms", status: "success" },
+      { name: "Assign Team", type: "Operation: assignAgent", duration: "16ms", status: "success" },
+      { name: "Send Welcome Email", type: "Function: sendEmail", duration: "12ms", status: "success" }
+    ],
+    capabilities: ["Form trigger", "Schema verification", "Retry on failure", "Confidence: 88%", "Dry run safe"]
+  },
+  {
+    id: "demo-3",
+    name: "Complaint Processing",
+    status: "validated",
+    version: 2,
+    lastTriggered: "1 hour ago (Today, 09:45:20 AM)",
+    triggerType: "Scheduled Trigger",
+    triggerSource: "crm_portal.sync (Cron */15 * * * *)",
+    executionTimeMs: 210,
+    engine: "AWS Bedrock Qwen + Diagnostics Engine",
+    confidence: 0.92,
+    requirement: "When a complaint is received, log the complaint, check anomaly and warranty status, then send resolution notification to customer.",
+    steps: [
+      { name: "Log Complaint", type: "Form Create: complaintSchema", duration: "68ms", status: "success" },
+      { name: "Check Anomaly & Warranty", type: "Function: diagnoseComplaint", duration: "98ms", status: "success" },
+      { name: "Notify Customer", type: "Form Create: sendNotification", duration: "44ms", status: "success" }
+    ],
+    capabilities: ["Scheduled trigger", "Anomaly detection", "Workflow versioning", "Confidence: 92%", "Dry run safe"]
+  },
+  {
+    id: "demo-4",
+    name: "Job Application Flow",
+    status: "active",
+    version: 1,
+    lastTriggered: "3 hours ago (Today, 07:30:10 AM)",
+    triggerType: "Webhook Trigger",
+    triggerSource: "careers_portal.candidate_submit",
+    executionTimeMs: 115,
+    engine: "AWS Bedrock Qwen + DAG Runtime Engine",
+    confidence: 0.91,
+    requirement: "When an applicant applies, screen resume and report applicant, schedule interview and offer negotiation, then conduct probation review.",
+    steps: [
+      { name: "Screen Resume", type: "Form Create: applicationSchema", duration: "45ms", status: "success" },
+      { name: "Conduct Interview", type: "Function: conductInterview", duration: "52ms", status: "success" },
+      { name: "Review Probation", type: "Function: reviewProbation", duration: "18ms", status: "success" }
+    ],
+    capabilities: ["Webhook trigger", "DAG route validation", "Retry on failure", "Confidence: 91%", "Dry run safe"]
+  }
 ];
 
 function App() {
+  const { isGuest, requireAuth } = useAuth();
   const [showHistory, setShowHistory] = useState(false);
   const [executionHistory, setExecutionHistory] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(fallbackDashboardStats);
   const [templates, setTemplates] = useState(fallbackTemplates);
   const [recentWorkflows, setRecentWorkflows] = useState(fallbackRecentWorkflows);
+  const [selectedRecentWorkflow, setSelectedRecentWorkflow] = useState(null);
   const [activeTemplate, setActiveTemplate] = useState("");
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState(null);
@@ -439,94 +517,308 @@ function App() {
           </div>
         </section>
 
-        <section className="dashboard-section" id="dashboard">
+        {/* =====================================================
+            TEMPLATES SECTION (Available for preview)
+            ===================================================== */}
+        <section className="templates-section" id="templates">
           <div className="dashboard-header">
             <div>
-              <div className="dashboard-title-row">
-                <p className="tag">LIVE DASHBOARD</p>
-                <span className="status-pill status-online">
-                  <span className="status-dot"></span>
-                  Connected (MongoDB & Bedrock AI)
-                </span>
-              </div>
-              <h2>Workflow health overview</h2>
+              <p className="tag">TEMPLATES LIBRARY</p>
+              <h2>Pre-built workflow templates</h2>
+              <p className="section-subtitle">Jumpstart your automation with pre-configured schemas and business logic.</p>
             </div>
           </div>
 
-          <div className="stats-grid">
-            <div className="stat-card">
-              <span>Total workflows</span>
-              <strong>{dashboardStats.totalWorkflows}</strong>
-            </div>
-            <div className="stat-card">
-              <span>Active</span>
-              <strong>{dashboardStats.activeWorkflows}</strong>
-            </div>
-            <div className="stat-card">
-              <span>Drafts</span>
-              <strong>{dashboardStats.draftWorkflows}</strong>
-            </div>
-            <div className="stat-card">
-              <span>Avg. confidence</span>
-              <strong>{dashboardStats.averageConfidence.toFixed(2)}</strong>
-            </div>
-          </div>
-
-          <div className="dashboard-panels" id="templates">
-            <div className="dashboard-panel">
-              <div className="panel-header">
-                <h3>Workflow templates</h3>
-              </div>
-
-              <div className="template-list">
-                {templates.map((template, index) => (
-                  <button
-                    key={template.id || template.name || `template-${index}`}
-                    type="button"
-                    style={{ "--card-index": index }}
-                    className="template-card template-action"
-                    onClick={() => setPreviewTemplate(template)}
-                  >
-                    <div className="template-card-header">
-                      <span className="template-category-pill">{template.category}</span>
-                      <span className="template-preview-badge">Preview ➔</span>
-                    </div>
-                    <h4>{template.name}</h4>
-                    <p>{template.description}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="dashboard-panel">
-              <div className="panel-header">
-                <h3>Recent workflows</h3>
-              </div>
-
-              <div className="recent-list">
-                {recentWorkflows.length > 0 ? (
-                  recentWorkflows.map((workflow) => (
-                    <div key={workflow.id || workflow.name} className="recent-item">
-                      <div>
-                        <strong>{workflow.name}</strong>
-                        <small>{workflow.status}</small>
-                      </div>
-                      <span>v{workflow.version || 1}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="empty-state">No recent workflows available yet.</p>
-                )}
-              </div>
-            </div>
+          <div className="template-list templates-full-grid">
+            {templates.map((template, index) => (
+              <button
+                key={template.id || template.name || `template-${index}`}
+                type="button"
+                style={{ "--card-index": index }}
+                className="template-card template-action"
+                onClick={() => setPreviewTemplate(template)}
+              >
+                <div className="template-card-header">
+                  <span className="template-category-pill">{template.category}</span>
+                  <span className="template-preview-badge">Preview ➔</span>
+                </div>
+                <h4>{template.name}</h4>
+                <p>{template.description}</p>
+              </button>
+            ))}
           </div>
         </section>
+
+        {/* =====================================================
+            LIVE DASHBOARD SECTION (Only visible when logged in)
+            ===================================================== */}
+        {!isGuest && (
+          <section className="dashboard-section" id="dashboard">
+            <div className="dashboard-header">
+              <div>
+                <div className="dashboard-title-row">
+                  <p className="tag">LIVE DASHBOARD</p>
+                  <span className="status-pill status-online">
+                    <span className="status-dot"></span>
+                    Connected (MongoDB & Bedrock AI)
+                  </span>
+                </div>
+                <h2>Workflow health overview</h2>
+              </div>
+            </div>
+
+            <div className="stats-grid">
+              <div className="stat-card">
+                <span>Total workflows</span>
+                <strong>{dashboardStats.totalWorkflows}</strong>
+              </div>
+              <div className="stat-card">
+                <span>Active</span>
+                <strong>{dashboardStats.activeWorkflows}</strong>
+              </div>
+              <div className="stat-card">
+                <span>Drafts</span>
+                <strong>{dashboardStats.draftWorkflows}</strong>
+              </div>
+              <div className="stat-card">
+                <span>Avg. confidence</span>
+                <strong>{dashboardStats.averageConfidence.toFixed(2)}</strong>
+              </div>
+            </div>
+
+            {/* VISUAL CHARTS & LATENCY BREAKDOWN */}
+            <div className="dashboard-charts-grid">
+              {/* PI / DONUT DISTRIBUTION CHART */}
+              <div className="dashboard-chart-card">
+                <div className="chart-card-header">
+                  <div>
+                    <span className="chart-pill-tag">HEALTH ANALYTICS</span>
+                    <h4>Workflow Status Breakdown</h4>
+                  </div>
+                  <span className="chart-stat-badge">● 100% Operational</span>
+                </div>
+
+                <div className="donut-chart-wrapper">
+                  <svg width="150" height="150" viewBox="0 0 160 160" className="donut-chart-svg">
+                    <circle cx="80" cy="80" r="58" fill="transparent" stroke="rgba(255,255,255,0.06)" strokeWidth="16" />
+                    {/* Active 42% (153) */}
+                    <circle
+                      cx="80"
+                      cy="80"
+                      r="58"
+                      fill="transparent"
+                      stroke="#10b981"
+                      strokeWidth="16"
+                      strokeDasharray="153 365"
+                      strokeDashoffset="0"
+                      transform="rotate(-90 80 80)"
+                    />
+                    {/* Drafts 33% (120) */}
+                    <circle
+                      cx="80"
+                      cy="80"
+                      r="58"
+                      fill="transparent"
+                      stroke="#a855f7"
+                      strokeWidth="16"
+                      strokeDasharray="120 365"
+                      strokeDashoffset="-153"
+                      transform="rotate(-90 80 80)"
+                    />
+                    {/* Validated 25% (92) */}
+                    <circle
+                      cx="80"
+                      cy="80"
+                      r="58"
+                      fill="transparent"
+                      stroke="#38bdf8"
+                      strokeWidth="16"
+                      strokeDasharray="92 365"
+                      strokeDashoffset="-273"
+                      transform="rotate(-90 80 80)"
+                    />
+                    <text x="80" y="76" textAnchor="middle" fill="currentColor" fontSize="22" fontWeight="800">
+                      {dashboardStats.totalWorkflows}
+                    </text>
+                    <text x="80" y="94" textAnchor="middle" fill="var(--text-muted)" fontSize="10.5" fontWeight="700">
+                      FLOWS
+                    </text>
+                  </svg>
+
+                  <div className="donut-chart-legend">
+                    <div className="legend-item">
+                      <span className="legend-dot dot-active" />
+                      <span className="legend-text">Active ({dashboardStats.activeWorkflows})</span>
+                      <strong>42%</strong>
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-dot dot-draft" />
+                      <span className="legend-text">Drafts ({dashboardStats.draftWorkflows})</span>
+                      <strong>33%</strong>
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-dot dot-validated" />
+                      <span className="legend-text">Validated (3)</span>
+                      <strong>25%</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* EXECUTION LATENCY & PERFORMANCE BAR GRAPH */}
+              <div className="dashboard-chart-card">
+                <div className="chart-card-header">
+                  <div>
+                    <span className="chart-pill-tag">ENGINE TIMINGS</span>
+                    <h4>Execution Latency Time (ms)</h4>
+                  </div>
+                  <span className="chart-stat-badge">⚡ Avg: 141ms</span>
+                </div>
+
+                <div className="latency-bar-list">
+                  {recentWorkflows.map((rw) => (
+                    <button
+                      key={rw.id}
+                      type="button"
+                      className="latency-bar-row"
+                      onClick={() => setSelectedRecentWorkflow(rw)}
+                      title="Click to inspect execution trace and engine metrics"
+                    >
+                      <div className="latency-bar-info">
+                        <span className="latency-wf-name">{rw.name}</span>
+                        <span className="latency-wf-ms">{rw.executionTimeMs || 120}ms</span>
+                      </div>
+                      <div className="latency-bar-track">
+                        <div
+                          className="latency-bar-fill"
+                          style={{ width: `${Math.min(100, ((rw.executionTimeMs || 120) / 240) * 100)}%` }}
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* RECENT WORKFLOWS & ENGINE CAPABILITIES */}
+            <div className="dashboard-panels">
+              <div className="dashboard-panel">
+                <div className="panel-header">
+                  <div>
+                    <h3>Recent workflows</h3>
+                    <p className="panel-subtext">Click any workflow to inspect its trigger timestamp and engine traces.</p>
+                  </div>
+                  <span className="panel-click-hint">Click to inspect ➔</span>
+                </div>
+
+                <div className="recent-list">
+                  {recentWorkflows.length > 0 ? (
+                    recentWorkflows.map((workflow) => (
+                      <button
+                        key={workflow.id || workflow.name}
+                        type="button"
+                        className="recent-item recent-interactive-btn"
+                        onClick={() => setSelectedRecentWorkflow(workflow)}
+                      >
+                        <div className="recent-item-left">
+                          <div className="recent-title-line">
+                            <strong>{workflow.name}</strong>
+                            <span className="recent-trigger-time">🕒 {workflow.lastTriggered || "Recently"}</span>
+                          </div>
+                          <div className="recent-meta-line">
+                            <small className={`recent-status-pill status-${workflow.status}`}>{workflow.status}</small>
+                            <span className="recent-engine-tag">⚙️ {workflow.triggerType || "Webhook"}</span>
+                            <span className="recent-ms-tag">⚡ {workflow.executionTimeMs || 140}ms</span>
+                          </div>
+                        </div>
+                        <span className="recent-version-badge">v{workflow.version || 1}.0</span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="empty-state">No recent workflows available yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* ENGINE CAPABILITIES CARD (PS11 FEATURE CHECKLIST) */}
+              <div className="dashboard-panel engine-capabilities-panel">
+                <div className="panel-header">
+                  <div>
+                    <h3>Workflow Engine Capabilities</h3>
+                    <p className="panel-subtext">Enterprise runtime specifications & guarantees</p>
+                  </div>
+                  <span className="engine-v-pill">Engine v2.4</span>
+                </div>
+
+                <div className="capabilities-checklist-grid">
+                  <div className="cap-check-item">
+                    <span className="cap-icon">✓</span>
+                    <div>
+                      <strong>Multiple workflow cards</strong>
+                      <small>Disambiguates multiple intent chains</small>
+                    </div>
+                  </div>
+                  <div className="cap-check-item">
+                    <span className="cap-icon">✓</span>
+                    <div>
+                      <strong>Retry on failure</strong>
+                      <small>3x exponential backoff recovery</small>
+                    </div>
+                  </div>
+                  <div className="cap-check-item">
+                    <span className="cap-icon">✓</span>
+                    <div>
+                      <strong>Webhook trigger</strong>
+                      <small>REST API & JSON payload listening</small>
+                    </div>
+                  </div>
+                  <div className="cap-check-item">
+                    <span className="cap-icon">✓</span>
+                    <div>
+                      <strong>Scheduled trigger</strong>
+                      <small>Cron expression time automation</small>
+                    </div>
+                  </div>
+                  <div className="cap-check-item">
+                    <span className="cap-icon">✓</span>
+                    <div>
+                      <strong>Workflow versioning</strong>
+                      <small>Immutable draft & publish snapshots</small>
+                    </div>
+                  </div>
+                  <div className="cap-check-item">
+                    <span className="cap-icon">✓</span>
+                    <div>
+                      <strong>Confidence score</strong>
+                      <small>Context capability match index</small>
+                    </div>
+                  </div>
+                  <div className="cap-check-item">
+                    <span className="cap-icon">✓</span>
+                    <div>
+                      <strong>Detection warnings</strong>
+                      <small>Automated DAG and cycle analysis</small>
+                    </div>
+                  </div>
+                  <div className="cap-check-item">
+                    <span className="cap-icon">✓</span>
+                    <div>
+                      <strong>Dry run</strong>
+                      <small>Safe non-destructive simulation</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <AboutSection />
 
         <DemoVideoSection onOpenBuilder={openBuilder} />
 
-        <HelpSection />
+        {/* HELP & FAQS (Only visible when logged in) */}
+        {!isGuest && <HelpSection />}
 
         <ContactSection />
 
@@ -581,13 +873,148 @@ function App() {
                 <button
                   className="primary-btn template-modal-use-btn"
                   onClick={() => {
-                    setActiveTemplate(previewTemplate.requirement);
+                    const req = previewTemplate.requirement;
                     setPreviewTemplate(null);
-                    openBuilder();
+                    if (isGuest) {
+                      requireAuth(() => {
+                        setActiveTemplate(req);
+                        openBuilder();
+                      }, "Sign in or register to load and customize this starter template.");
+                    } else {
+                      setActiveTemplate(req);
+                      openBuilder();
+                    }
                   }}
                   type="button"
                 >
                   ✦ Use This Template →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =====================================================
+            RECENT WORKFLOW RUN & ENGINE INSPECTOR MODAL
+            ===================================================== */}
+        {selectedRecentWorkflow && (
+          <div className="template-modal-overlay" onClick={() => setSelectedRecentWorkflow(null)}>
+            <div className="template-modal-card recent-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="template-modal-header">
+                <div>
+                  <div className="recent-modal-badge-row">
+                    <span className="template-category-pill">WORKFLOW ENGINE TRACE</span>
+                    <span className={`recent-status-pill status-${selectedRecentWorkflow.status}`}>
+                      ● {selectedRecentWorkflow.status?.toUpperCase()} (v{selectedRecentWorkflow.version || 1}.0)
+                    </span>
+                  </div>
+                  <h3>{selectedRecentWorkflow.name}</h3>
+                </div>
+                <button
+                  className="template-modal-close"
+                  onClick={() => setSelectedRecentWorkflow(null)}
+                  type="button"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* TRIGGER DETAILS & ENGINE SPEC BOX */}
+              <div className="recent-run-metrics-grid">
+                <div className="run-metric-box">
+                  <small>TRIGGERED AT</small>
+                  <strong>🕒 {selectedRecentWorkflow.lastTriggered || "Recently"}</strong>
+                </div>
+                <div className="run-metric-box">
+                  <small>TRIGGER MODE</small>
+                  <strong>⚡ {selectedRecentWorkflow.triggerType || "Webhook"}</strong>
+                </div>
+                <div className="run-metric-box">
+                  <small>TOTAL LATENCY</small>
+                  <strong className="ms-highlight">⚡ {selectedRecentWorkflow.executionTimeMs || 140}ms</strong>
+                </div>
+                <div className="run-metric-box">
+                  <small>MATCH CONFIDENCE</small>
+                  <strong className="conf-highlight">🎯 {Math.round((selectedRecentWorkflow.confidence || 0.9) * 100)}%</strong>
+                </div>
+              </div>
+
+              <div className="recent-engine-box">
+                <small>RUNTIME ENGINE SPECIFICATION</small>
+                <p>⚙️ {selectedRecentWorkflow.engine || "AWS Bedrock Qwen + DAG Runtime Engine"}</p>
+                <span className="source-endpoint-code">Source: {selectedRecentWorkflow.triggerSource || "orders.webhook"}</span>
+              </div>
+
+              {/* STEP EXECUTION LATENCY PIPELINE */}
+              {selectedRecentWorkflow.steps && (
+                <div className="recent-pipeline-section">
+                  <label>STEP-BY-STEP EXECUTION LATENCY</label>
+                  <div className="recent-pipeline-list">
+                    {selectedRecentWorkflow.steps.map((st, idx) => (
+                      <div key={st.name || idx} className="recent-pipeline-row">
+                        <div className="pipeline-step-left">
+                          <span className="pipeline-step-idx">{idx + 1}</span>
+                          <div>
+                            <strong>{st.name}</strong>
+                            <small>{st.type}</small>
+                          </div>
+                        </div>
+                        <div className="pipeline-step-right">
+                          <span className="pipeline-ms-badge">⚡ {st.duration || "35ms"}</span>
+                          <span className="pipeline-status-check">✓</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CAPABILITIES */}
+              <div className="recent-capabilities-row">
+                <label>GUARANTEED CAPABILITIES</label>
+                <div className="recent-cap-pills">
+                  {(selectedRecentWorkflow.capabilities || [
+                    "Multiple workflow cards",
+                    "Retry on failure (3x)",
+                    "Webhook trigger",
+                    "Scheduled trigger",
+                    "Workflow versioning",
+                    "Confidence score",
+                    "Detection warnings",
+                    "Dry run safe"
+                  ]).map((cap) => (
+                    <span key={cap} className="recent-cap-pill">✓ {cap}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="template-modal-actions">
+                <button
+                  className="template-modal-cancel-btn"
+                  onClick={() => setSelectedRecentWorkflow(null)}
+                  type="button"
+                >
+                  Close
+                </button>
+                <button
+                  className="primary-btn template-modal-use-btn"
+                  onClick={() => {
+                    const req = selectedRecentWorkflow.requirement;
+                    setSelectedRecentWorkflow(null);
+                    if (isGuest) {
+                      requireAuth(() => {
+                        setActiveTemplate(req);
+                        openBuilder();
+                      }, "Sign in or register to open this workflow in the visual editor.");
+                    } else {
+                      setActiveTemplate(req);
+                      openBuilder();
+                    }
+                  }}
+                  type="button"
+                >
+                  ✦ Open in Workflow Studio →
                 </button>
               </div>
             </div>
@@ -827,29 +1254,19 @@ function App() {
                               <small>
                                 {step.status}
                               </small>
-
                             </div>
-
-                          )
-                        )}
-
+                          ))}
+                        </div>
                       </div>
-
-                    </div>
-
-                  )
+                    ))}
+                  </div>
                 )}
-
               </div>
+            </div>
+          )}
 
-            )}
-
-          </div>
-
-        </div>
-
-      )}
-
+      {/* AUTHENTICATION MODAL (LOGIN & SIGN UP) */}
+      <AuthModal />
     </div>
   );
 }

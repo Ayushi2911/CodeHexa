@@ -52,6 +52,18 @@ It analyzes requirement text against real project context (database schemas, cus
 
 ## 🚀 Key Features
 
+
+### ✦ Authentication & Guest Mode Protection
+- **Guest Mode Browsing**: Unauthenticated visitors can freely explore the landing page, templates, documentation, features, interactive demo, and contact form.
+- **Workflow Generation Interceptor**: When a guest clicks "Generate Workflow", "Start Building", or "Use This Template", an interactive login/registration modal appears.
+- **Google Sign-In & Email/Password Auth**:
+  - One-click Google authentication with automated profile provisioning.
+  - Custom Registration with **Full Name**, **Gmail/Email**, **Password**, **Country**, and **City/Location**.
+  - Immediate resumption: Automatically resumes workflow generation upon successful authentication without losing input.
+- **Navbar Profile Badge & Session State**:
+  - Guest state displays `● Guest Mode` with dedicated `Log In` and `Sign Up` action buttons.
+  - Logged-in state displays custom user avatar with name, location tag, and `Log Out` button.
+
 ### ✦ Intelligent Workflow Generator
 - Fast animated 8-step reasoning HUD displaying active context matching.
 - Multi-workflow card overview with confidence scores, validation indicators, and trigger badges.

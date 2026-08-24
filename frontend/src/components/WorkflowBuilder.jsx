@@ -19,8 +19,10 @@ import {
 import WorkflowInspector from "./WorkflowInspector";
 import WorkflowJsonPanel from "./WorkflowJsonPanel";
 import WorkflowDiagram from "./workflow/WorkflowDiagram";
+import { useAuth } from "../context/AuthContext";
 
 function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowChange }) {
+  const { isGuest, requireAuth, openRegister } = useAuth();
   // Input states
   const [projectName, setProjectName] = useState("sample-flow");
   const [requirement, setRequirement] = useState(
@@ -105,6 +107,17 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
       return;
     }
 
+    if (isGuest) {
+      requireAuth(() => {
+        executeGenerationSequence();
+      }, "Please sign up or log in to generate and customize workflows.");
+      return;
+    }
+
+    executeGenerationSequence();
+  };
+
+  const executeGenerationSequence = () => {
     setIsGenerating(true);
     setGenerationStep(0);
     setViewState("input");
@@ -379,6 +392,33 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
     setValidationResult(null);
   };
 
+  const handleReorderSteps = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex || !workflow?.steps) return;
+    const reordered = [...workflow.steps];
+    const [movedItem] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, movedItem);
+
+    // Re-link order and onSuccess
+    const updatedSteps = reordered.map((st, idx) => {
+      const nextStep = reordered[idx + 1];
+      return {
+        ...st,
+        order: idx + 1,
+        onSuccess: nextStep ? (nextStep.id || nextStep.stepId) : "complete",
+      };
+    });
+
+    const updatedWorkflow = {
+      ...workflow,
+      steps: updatedSteps,
+    };
+
+    setWorkflow(updatedWorkflow);
+    if (onWorkflowChange) {
+      onWorkflowChange(updatedWorkflow);
+    }
+  };
+
   /*
    * =========================================================
    * 6. VALIDATE WORKFLOW
@@ -590,13 +630,34 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
           </div>
 
           <div className="requirement-box">
+            {isGuest && (
+              <div className="guest-builder-locked-banner">
+                <div className="guest-lock-info">
+                  <span className="guest-lock-icon">🔒</span>
+                  <div>
+                    <strong>Guest Preview Mode</strong>
+                    <p>Sign in or create an account to customize requirements and generate live workflows.</p>
+                  </div>
+                </div>
+                <button
+                  className="guest-unlock-btn"
+                  onClick={() => openRegister("Create your account to unlock workflow generation and live execution.")}
+                  type="button"
+                >
+                  Sign Up / Log In ➔
+                </button>
+              </div>
+            )}
+
             <div className="project-name-row">
               <label htmlFor="project-name-input">PROJECT NAME</label>
               <input
                 id="project-name-input"
-                className="project-name-field"
+                className={`project-name-field ${isGuest ? "guest-locked-input" : ""}`}
                 type="text"
                 value={projectName}
+                readOnly={isGuest}
+                onClick={isGuest ? () => openRegister("Sign in to edit the project name and generate workflows.") : undefined}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="e.g. sample-flow"
               />
@@ -605,20 +666,27 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
             <label htmlFor="req-textarea" className="req-label">BUSINESS REQUIREMENT</label>
             <textarea
               id="req-textarea"
+              className={isGuest ? "guest-locked-input" : ""}
               value={requirement}
+              readOnly={isGuest}
+              onClick={isGuest ? () => openRegister("Sign in to customize business requirements and generate workflows.") : undefined}
               onChange={(event) => setRequirement(event.target.value)}
               placeholder="Example: When an order is placed, notify the vendor, create an invoice, update inventory, then send a confirmation to the customer."
             />
 
             <div className="requirement-box-actions">
               <button
-                className="primary-btn generate-workflow-btn"
+                className={`primary-btn generate-workflow-btn ${isGuest ? "guest-action-btn" : ""}`}
                 onClick={handleStartGeneration}
                 disabled={isGenerating}
                 type="button"
               >
-                <span className="btn-spark-icon">✦</span>
-                {isGenerating ? "Analyzing Context..." : "Generate Workflow"}
+                <span className="btn-spark-icon">{isGuest ? "🔒" : "✦"}</span>
+                {isGenerating
+                  ? "Analyzing Context..."
+                  : isGuest
+                  ? "Sign In to Generate Workflow"
+                  : "Generate Workflow"}
                 <span className="btn-arrow-icon">→</span>
               </button>
             </div>
@@ -1149,6 +1217,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
                   );
                   setSelectedStep(step || null);
                 }}
+                onReorderSteps={handleReorderSteps}
               />
             </div>
 
