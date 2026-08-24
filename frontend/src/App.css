@@ -6028,38 +6028,10 @@ section[id] {
   margin-bottom: 14px;
 }
 
-.test-payload-preview-group {
-  flex: 1;
-  min-width: 260px;
-}
-
-.test-payload-preview-group label {
-  display: block;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  margin-bottom: 6px;
-}
-
-.test-payload-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--bg-app);
-  border: 1px solid var(--border-subtle);
-  color: #38bdf8;
-  font-family: monospace;
-  font-size: 12px;
-  outline: none;
-  resize: vertical;
-  box-sizing: border-box;
-}
-
 .execution-control-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  justify-content: flex-end;
+  align-items: center;
   gap: 16px;
   margin-bottom: 20px;
   flex-wrap: wrap;

@@ -54,20 +54,7 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
   // Resolution modal / action dropdown
   const [resolutionChoice, setResolutionChoice] = useState("");
 
-  // Execution & Test Payload
-  const [testPayload, setTestPayload] = useState(
-    JSON.stringify(
-      {
-        _id: "ORDER-001",
-        projectName: "sample-flow",
-        totalAmount: 5000,
-        stock_type: "physical",
-        item_id: "ITEM-001"
-      },
-      null,
-      2
-    )
-  );
+  // Execution
   const [executionState, setExecutionState] = useState([]);
   const [executionMessage, setExecutionMessage] = useState("");
   const [publishMessage, setPublishMessage] = useState("");
@@ -511,15 +498,8 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
       return;
     }
 
-    let parsedPayload = {};
-    try {
-      parsedPayload = JSON.parse(testPayload);
-    } catch (_) {
-      parsedPayload = { stock_type: "physical" };
-    }
-
     setIsExecuting(true);
-    setExecutionMessage("⚡ Workflow execution started with test payload...");
+    setExecutionMessage("⚡ Workflow execution started...");
     setPublishMessage("");
 
     setExecutionState(createExecutionState(workflow));
@@ -1121,16 +1101,6 @@ function WorkflowBuilder({ onHistoryChange, prefillRequirement = "", onWorkflowC
             <div className="workflow-preview">
               <div className="studio-canvas-toolbar">
                 <div className="execution-control-row">
-                  <div className="test-payload-preview-group">
-                    <label>RUNTIME TEST PAYLOAD (INPUT JSON)</label>
-                    <textarea
-                      className="test-payload-textarea"
-                      value={testPayload}
-                      onChange={(e) => setTestPayload(e.target.value)}
-                      rows={4}
-                    />
-                  </div>
-
                   <div className="run-actions-cluster">
                     <div className="failure-simulation">
                       <label htmlFor="failure-step">Failure Demo</label>

@@ -1,5 +1,45 @@
+export function analyzeRequirement(requirement, projectName = "sample-flow") {
+  const normalizedRequirement = (requirement || "").trim();
+  const text = normalizedRequirement.toLowerCase();
+
+  if (text.length < 15) {
+    return {
+      type: "NO_WORKFLOW_DETECTED",
+      reason: "Underspecified natural-language intent",
+      suggestions: [
+        "Describe what starts the process.",
+        "List the actions that should happen.",
+        "Describe any conditions controlling those actions."
+      ],
+      example: "When an order is created, notify the vendor and create an invoice."
+    };
+  }
+
+  const workflow = generateSingleWorkflow(normalizedRequirement, projectName);
+  return {
+    type: "SINGLE_WORKFLOW",
+    workflows: [workflow]
+  };
+}
+
+export function generateSingleWorkflow(requirement, projectName = "sample-flow") {
+  const workflow = generateWorkflowFromRequirement(requirement);
+  workflow.projectName = projectName;
+  workflow.confidence = workflow.confidence || 0.86;
+  workflow.validationPassed = true;
+  workflow.id = workflow.id || workflow.workflowId;
+
+  workflow.steps = workflow.steps.map((step, index) => ({
+    ...step,
+    stepId: step.stepId || step.id || `step-${String(index + 1).padStart(3, "0")}`,
+    status: step.status || "pending"
+  }));
+
+  return workflow;
+}
+
 export function generateWorkflowFromRequirement(requirement) {
-  const text = requirement.toLowerCase();
+  const text = (requirement || "").toLowerCase();
 
   // Default workflow structure
   const workflow = {
@@ -7,6 +47,7 @@ export function generateWorkflowFromRequirement(requirement) {
     name: "Generated Workflow",
     version: 1,
     status: "draft",
+    confidence: 0.86,
 
     trigger: {
       id: "trigger-1",
