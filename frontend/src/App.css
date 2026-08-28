@@ -112,6 +112,33 @@ section[id] {
   scroll-margin-top: 84px;
 }
 
+.dashboard-refresh-btn {
+  padding: 7px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-refresh-btn:hover:not(:disabled) {
+  border-color: rgba(16, 185, 129, 0.55);
+  color: var(--text-primary);
+}
+
+.dashboard-refresh-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.dashboard-last-updated {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .logo {
   font-size: 23px;
   font-weight: 800;

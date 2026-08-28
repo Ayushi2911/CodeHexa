@@ -162,6 +162,8 @@ function App() {
   const [activeTemplate, setActiveTemplate] = useState("");
   const [prefillWorkflow, setPrefillWorkflow] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [dashboardMode, setDashboardMode] = useState("demo");
+  const [lastDashboardUpdate, setLastDashboardUpdate] = useState(null);
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [activeSection, setActiveSection] = useState("home");
   const [theme, setTheme] = useState(() => {
@@ -304,6 +306,9 @@ function App() {
   };
 
   const refreshDashboardData = async () => {
+    if (loadingDashboard) return;
+
+    setLoadingDashboard(true);
     try {
       const [statsResult, templatesResult, recentResult, historyResult] = await Promise.allSettled([
         workflowApi.getStats(),
@@ -313,15 +318,21 @@ function App() {
       ]);
 
       const statsData = statsResult.status === "fulfilled"
-        ? (statsResult.value.data?.stats || statsResult.value.data || fallbackDashboardStats)
+        ? (statsResult.value.data?.data?.stats || statsResult.value.data?.stats || statsResult.value.data?.data || statsResult.value.data || fallbackDashboardStats)
         : fallbackDashboardStats;
+      const normalizedStats = {
+        ...fallbackDashboardStats,
+        ...statsData,
+        activeWorkflows: statsData.activeWorkflows ?? statsData.publishedWorkflows ?? 0,
+        averageConfidence: Number(statsData.averageConfidence ?? fallbackDashboardStats.averageConfidence),
+      };
 
       const templatesData = templatesResult.status === "fulfilled"
-        ? (templatesResult.value.data?.templates || templatesResult.value.data || fallbackTemplates)
+        ? (templatesResult.value.data?.data?.templates || templatesResult.value.data?.templates || fallbackTemplates)
         : fallbackTemplates;
 
       const recentData = recentResult.status === "fulfilled"
-        ? (recentResult.value.data?.workflows || recentResult.value.data?.data || recentResult.value.data || fallbackRecentWorkflows)
+        ? (recentResult.value.data?.data?.workflows || recentResult.value.data?.workflows || recentResult.value.data?.data || fallbackRecentWorkflows)
         : fallbackRecentWorkflows;
 
       if (historyResult.status === "fulfilled" && historyResult.value.data?.data?.length > 0) {
@@ -335,8 +346,8 @@ function App() {
         });
       }
 
-      setDashboardStats(statsData);
-      setTemplates(templatesData);
+      setDashboardStats(normalizedStats);
+      setTemplates(Array.isArray(templatesData) ? templatesData : fallbackTemplates);
       setRecentWorkflows(Array.isArray(recentData) ? recentData : fallbackRecentWorkflows);
 
       if (statsResult.status !== "fulfilled" || templatesResult.status !== "fulfilled" || recentResult.status !== "fulfilled") {
@@ -344,6 +355,7 @@ function App() {
       } else {
         setDashboardMode("live");
       }
+      setLastDashboardUpdate(new Date());
     } catch (error) {
       console.error("Failed to load dashboard data", error);
       setDashboardStats(fallbackDashboardStats);
@@ -389,6 +401,14 @@ function App() {
 
   useEffect(() => {
     refreshDashboardData();
+
+    const refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refreshDashboardData();
+      }
+    }, 30000);
+
+    return () => window.clearInterval(refreshTimer);
   }, []);
 
   /*
@@ -512,6 +532,22 @@ function App() {
 
     refreshDashboardData();
   };
+
+  const workflowStatusCounts = recentWorkflows.reduce((counts, workflow) => {
+    const status = workflow.status || "draft";
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {});
+  const workflowCount = Math.max(dashboardStats.totalWorkflows || recentWorkflows.length, 1);
+  const activeCount = dashboardStats.activeWorkflows ?? workflowStatusCounts.active ?? 0;
+  const draftCount = dashboardStats.draftWorkflows ?? workflowStatusCounts.draft ?? 0;
+  const validatedCount = Math.max(workflowCount - activeCount - draftCount, 0);
+  const activePercent = Math.round((activeCount / workflowCount) * 100);
+  const draftPercent = Math.round((draftCount / workflowCount) * 100);
+  const validatedPercent = Math.max(0, 100 - activePercent - draftPercent);
+  const averageLatency = recentWorkflows.length
+    ? Math.round(recentWorkflows.reduce((sum, workflow) => sum + Number(workflow.executionTimeMs || 0), 0) / recentWorkflows.length)
+    : 0;
 
   return (
     <div className="app">
@@ -646,18 +682,23 @@ function App() {
         {/* =====================================================
             LIVE DASHBOARD SECTION (Only visible when logged in)
             ===================================================== */}
-        {!isGuest && (
-          <section className="dashboard-section" id="dashboard">
+        <section className="dashboard-section" id="dashboard">
             <div className="dashboard-header">
               <div>
                 <div className="dashboard-title-row">
                   <p className="tag">LIVE DASHBOARD</p>
-                  <span className="status-pill status-online">
+                  <span className={`status-pill ${dashboardMode === "live" ? "status-online" : "status-warning"}`}>
                     <span className="status-dot"></span>
-                    Connected (MongoDB & Bedrock AI)
+                    {dashboardMode === "live" ? "Live data connected" : "Demo data - API unavailable"}
                   </span>
+                  <button className="dashboard-refresh-btn" type="button" onClick={refreshDashboardData} disabled={loadingDashboard}>
+                    {loadingDashboard ? "Refreshing..." : "Refresh"}
+                  </button>
                 </div>
                 <h2>Workflow health overview</h2>
+                <p className="dashboard-last-updated">
+                  {lastDashboardUpdate ? `Updated ${lastDashboardUpdate.toLocaleTimeString()}` : "Connecting to workflow service..."}
+                </p>
               </div>
             </div>
 
@@ -703,7 +744,7 @@ function App() {
                       fill="transparent"
                       stroke="#10b981"
                       strokeWidth="16"
-                      strokeDasharray="153 365"
+                      strokeDasharray={`${(activePercent / 100) * 364} 365`}
                       strokeDashoffset="0"
                       transform="rotate(-90 80 80)"
                     />
@@ -715,8 +756,8 @@ function App() {
                       fill="transparent"
                       stroke="#a855f7"
                       strokeWidth="16"
-                      strokeDasharray="120 365"
-                      strokeDashoffset="-153"
+                      strokeDasharray={`${(draftPercent / 100) * 364} 365`}
+                      strokeDashoffset={`${-(activePercent / 100) * 364}`}
                       transform="rotate(-90 80 80)"
                     />
                     {/* Validated 25% (92) */}
@@ -727,8 +768,8 @@ function App() {
                       fill="transparent"
                       stroke="#38bdf8"
                       strokeWidth="16"
-                      strokeDasharray="92 365"
-                      strokeDashoffset="-273"
+                      strokeDasharray={`${(validatedPercent / 100) * 364} 365`}
+                      strokeDashoffset={`${-((activePercent + draftPercent) / 100) * 364}`}
                       transform="rotate(-90 80 80)"
                     />
                     <text x="80" y="76" textAnchor="middle" fill="currentColor" fontSize="22" fontWeight="800">
@@ -742,18 +783,18 @@ function App() {
                   <div className="donut-chart-legend">
                     <div className="legend-item">
                       <span className="legend-dot dot-active" />
-                      <span className="legend-text">Active ({dashboardStats.activeWorkflows})</span>
-                      <strong>42%</strong>
+                      <span className="legend-text">Active ({activeCount})</span>
+                      <strong>{activePercent}%</strong>
                     </div>
                     <div className="legend-item">
                       <span className="legend-dot dot-draft" />
-                      <span className="legend-text">Drafts ({dashboardStats.draftWorkflows})</span>
-                      <strong>33%</strong>
+                      <span className="legend-text">Drafts ({draftCount})</span>
+                      <strong>{draftPercent}%</strong>
                     </div>
                     <div className="legend-item">
                       <span className="legend-dot dot-validated" />
-                      <span className="legend-text">Validated (3)</span>
-                      <strong>25%</strong>
+                      <span className="legend-text">Validated ({validatedCount})</span>
+                      <strong>{validatedPercent}%</strong>
                     </div>
                   </div>
                 </div>
@@ -766,7 +807,7 @@ function App() {
                     <span className="chart-pill-tag">ENGINE TIMINGS</span>
                     <h4>Execution Latency Time (ms)</h4>
                   </div>
-                  <span className="chart-stat-badge">⚡ Avg: 141ms</span>
+                  <span className="chart-stat-badge">⚡ Avg: {averageLatency}ms</span>
                 </div>
 
                 <div className="latency-bar-list">
@@ -904,8 +945,7 @@ function App() {
                 </div>
               </div>
             </div>
-          </section>
-        )}
+        </section>
 
         <AboutSection />
 

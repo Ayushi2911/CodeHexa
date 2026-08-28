@@ -126,11 +126,7 @@ function ProfileModal() {
         {/* User Summary Banner */}
         <div className="profile-hero-banner">
           <div className="profile-avatar-large">
-            {user.avatar ? (
-              <img src={user.avatar} alt={user.name} className="profile-avatar-img" />
-            ) : (
-              getInitials(user.name)
-            )}
+            {getInitials(user.name)}
           </div>
           <div className="profile-hero-info">
             <h3>{user.name}</h3>

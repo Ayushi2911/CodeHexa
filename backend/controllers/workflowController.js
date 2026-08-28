@@ -1454,6 +1454,144 @@ async function runs(
   }
 }
 
+async function createRun(req, res) {
+  try {
+    if (!needDb(res)) return;
+
+    const workflow = await Workflow.findById(req.params.id || req.body?.workflowId);
+    if (!workflow) {
+      return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Workflow not found" } });
+    }
+
+    const run = await WorkflowRun.create({
+      workflowId: workflow._id,
+      workflowName: workflow.workflowName,
+      workflowVersion: workflow.version,
+      projectName: workflow.projectName,
+      triggerPayload: req.body?.triggerPayload || req.body?.payload || {},
+      status: ["pending", "running", "completed", "failed", "partial"].includes(req.body?.status)
+        ? req.body.status
+        : "pending",
+      stepResults: Array.isArray(req.body?.stepResults) ? req.body.stepResults : [],
+      startedAt: req.body?.startedAt || new Date(),
+      completedAt: req.body?.completedAt || null,
+      totalDurationMs: Number(req.body?.totalDurationMs) || 0,
+      dryRun: Boolean(req.body?.dryRun),
+    });
+
+    return res.status(201).json({ ok: true, data: serializeRun(run) });
+  } catch (error) {
+    return res.status(400).json({ ok: false, error: { code: "RUN_CREATE_FAILED", message: error.message } });
+  }
+}
+
+async function updateRunStatus(req, res) {
+  try {
+    if (!needDb(res)) return;
+
+    const validStatuses = ["pending", "running", "completed", "failed", "partial"];
+    const { status } = req.body || {};
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_STATUS", message: "Invalid workflow run status", validStatuses } });
+    }
+
+    const run = await WorkflowRun.findOneAndUpdate(
+      { _id: req.params.runId, workflowId: req.params.id },
+      { status, completedAt: ["completed", "failed", "partial"].includes(status) ? new Date() : null },
+      { new: true, runValidators: true }
+    );
+
+    if (!run) {
+      return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Workflow run not found" } });
+    }
+
+    return res.json({ ok: true, data: serializeRun(run) });
+  } catch (error) {
+    return res.status(400).json({ ok: false, error: { code: "RUN_UPDATE_FAILED", message: error.message } });
+  }
+}
+
+async function bulkDeleteWorkflows(req, res) {
+  try {
+    if (!needDb(res)) return;
+
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    if (!ids.length) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_IDS", message: "At least one workflow ID is required" } });
+    }
+
+    const result = await Workflow.updateMany({ _id: { $in: ids } }, { $set: { isDeleted: true, isActive: false } });
+    return res.json({ ok: true, data: { deletedCount: result.modifiedCount || 0, ids } });
+  } catch (error) {
+    return res.status(400).json({ ok: false, error: { code: "BULK_DELETE_FAILED", message: error.message } });
+  }
+}
+
+async function duplicateWorkflow(req, res) {
+  try {
+    if (!needDb(res)) return;
+
+    const source = await Workflow.findById(req.params.id).lean();
+    if (!source) {
+      return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Workflow not found" } });
+    }
+
+    const duplicate = await Workflow.create({
+      ...source,
+      _id: undefined,
+      workflowName: req.body?.workflowName || `${source.workflowName} (Copy)`,
+      version: 1,
+      status: "draft",
+      isActive: false,
+      isDeleted: false,
+      familyId: familyId(),
+      editSource: "manual",
+      baseVersion: source.version,
+      changeSummary: "Duplicated workflow",
+    });
+
+    return res.status(201).json({ ok: true, data: serializeWorkflow(duplicate) });
+  } catch (error) {
+    return res.status(400).json({ ok: false, error: { code: "DUPLICATE_FAILED", message: error.message } });
+  }
+}
+
+async function importWorkflows(req, res) {
+  try {
+    if (!needDb(res)) return;
+
+    const payload = req.body?.workflows ?? req.body;
+    const items = Array.isArray(payload) ? payload : [payload];
+    if (!items.length || items.some((item) => !item || typeof item !== "object")) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_IMPORT", message: "A valid workflow array or object is required" } });
+    }
+
+    const imported = [];
+    for (const item of items) {
+      const workflow = await Workflow.create({
+        projectName: item.projectName || "sample-flow",
+        workflowName: item.workflowName || item.name || "Imported Workflow",
+        description: item.description || "",
+        requirement: item.requirement || "",
+        triggerEvent: item.triggerEvent || item.trigger || { type: "manual" },
+        steps: Array.isArray(item.steps) ? item.steps : [],
+        confidence: Number(item.confidence) || 0,
+        warnings: Array.isArray(item.warnings) ? item.warnings : [],
+        status: ["draft", "published", "archived"].includes(item.status) ? item.status : "draft",
+        editSource: "manual",
+        familyId: familyId(),
+        createdBy: item.createdBy || "import",
+        updatedBy: item.updatedBy || "import",
+      });
+      imported.push(serializeWorkflow(workflow));
+    }
+
+    return res.status(201).json({ ok: true, data: { imported, count: imported.length } });
+  } catch (error) {
+    return res.status(400).json({ ok: false, error: { code: "IMPORT_FAILED", message: error.message } });
+  }
+}
+
 async function runById(
   req,
   res
@@ -2930,6 +3068,11 @@ module.exports = {
   validateEndpoint,
   validateById,
   trigger,
+  createRun,
+  updateRunStatus,
+  bulkDeleteWorkflows,
+  duplicateWorkflow,
+  importWorkflows,
   executeWorkflowDirect,
   runs,
   runById,

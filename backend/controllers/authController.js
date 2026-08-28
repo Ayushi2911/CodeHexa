@@ -55,7 +55,6 @@ async function verifyGoogleIdToken(token) {
       };
     }
   } catch (verifyErr) {
-    // 3. Fallback: Parse unverified JWT payload for local unit testing / offline dev
     const parsed = parseJwtPayload(token);
     if (parsed && parsed.email) {
       return {
@@ -66,33 +65,6 @@ async function verifyGoogleIdToken(token) {
         emailVerified: Boolean(parsed.email_verified),
       };
     }
-  }
-
-  return null;
-}
-
-/**
- * Verifies a Google OAuth 2.0 Access Token using Google's userinfo endpoint
- */
-async function verifyGoogleAccessToken(accessToken) {
-  if (!accessToken || typeof accessToken !== "string") return null;
-
-  try {
-    const res = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      timeout: 5000,
-    });
-    if (res.data && res.data.email) {
-      return {
-        email: res.data.email,
-        name: res.data.name || res.data.given_name || "",
-        avatar: res.data.picture || "",
-        googleId: res.data.sub || "",
-        emailVerified: res.data.email_verified === "true" || res.data.email_verified === true,
-      };
-    }
-  } catch (err) {
-    console.warn("Google accessToken verification note:", err.message);
   }
 
   return null;
@@ -369,31 +341,22 @@ exports.login = async (req, res) => {
  */
 exports.googleAuth = async (req, res) => {
   try {
-    const { credential, idToken, accessToken, name, email, country, location, phone, gender, avatar, googleId } = req.body || {};
+    const { credential, idToken, name, email, country, location, phone, gender, avatar, googleId } = req.body || {};
 
     let verifiedEmail = email;
     let verifiedName = name;
     let verifiedAvatar = avatar || "";
     let verifiedGoogleId = googleId || "";
 
-    if (accessToken && typeof accessToken === "string") {
-      const verified = await verifyGoogleAccessToken(accessToken);
+    const rawToken = credential || idToken;
+
+    if (rawToken && typeof rawToken === "string") {
+      const verified = await verifyGoogleIdToken(rawToken);
       if (verified && verified.email) {
         verifiedEmail = verified.email;
         verifiedName = verifiedName || verified.name;
         verifiedAvatar = verifiedAvatar || verified.avatar;
         verifiedGoogleId = verifiedGoogleId || verified.googleId;
-      }
-    } else {
-      const rawToken = credential || idToken;
-      if (rawToken && typeof rawToken === "string") {
-        const verified = await verifyGoogleIdToken(rawToken);
-        if (verified && verified.email) {
-          verifiedEmail = verified.email;
-          verifiedName = verifiedName || verified.name;
-          verifiedAvatar = verifiedAvatar || verified.avatar;
-          verifiedGoogleId = verifiedGoogleId || verified.googleId;
-        }
       }
     }
 

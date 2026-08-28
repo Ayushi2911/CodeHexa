@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 /**
  * Main Axios client instance with standard timeout and base URL configuration.
@@ -45,10 +45,6 @@ api.interceptors.response.use(
         localStorage.removeItem("codehexa_token");
       } catch (_) {}
     }
-    // Handle Network / Connection Errors with clear instructions
-    if (!error.response && error.message === "Network Error") {
-      error.message = "Backend server is not running or unreachable at http://localhost:4000. Please start the backend server (cd backend && npm run dev).";
-    }
     return Promise.reject(error);
   }
 );
@@ -78,6 +74,10 @@ export const workflowApi = {
   updateStatus: (id, status) => api.patch(`/workflows/${id}/status`, { status }),
   deleteWorkflow: (id) => api.delete(`/workflows/${id}`),
   delete: (id) => api.delete(`/workflows/${id}`),
+  bulkDelete: (ids) => api.post("/workflows/bulk-delete", { ids }),
+  importWorkflows: (workflows) => api.post("/workflows/import", { workflows }),
+  duplicateWorkflow: (id, workflowName) => api.post(`/workflows/${id}/duplicate`, { workflowName }),
+  exportAll: () => api.get("/workflows/export"),
 
   // Workflow Detection & Validation
   detectWorkflow: (requirement, projectName = "sample-flow") =>
@@ -102,8 +102,11 @@ export const workflowApi = {
   // Execution Runs & History
   getWorkflowRuns: (workflowId) => api.get(`/workflows/${workflowId}/runs`),
   getRuns: (workflowId) => api.get(`/workflows/${workflowId}/runs`),
+  createWorkflowRun: (workflowId, payload = {}) => api.post(`/workflows/${workflowId}/runs`, payload),
   getWorkflowRunById: (runId) => api.get(`/workflows/run/${runId}`),
   getRunById: (runId) => api.get(`/workflows/run/${runId}`),
+  updateWorkflowRunStatus: (workflowId, runId, status) =>
+    api.patch(`/workflows/${workflowId}/runs/${runId}/status`, { status }),
   getHistory: () => api.get("/workflows/history"),
   saveHistory: (record) => api.post("/workflows/history", record),
 

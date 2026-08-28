@@ -122,8 +122,8 @@ export function AuthProvider({ children }) {
    * Google Sign In / Sign Up
    */
   const googleSignIn = async (googleProfile = {}) => {
-    if (!googleProfile.email && !googleProfile.credential && !googleProfile.idToken && !googleProfile.accessToken) {
-      return { success: false, error: "Google authentication credentials are required." };
+    if (!googleProfile.email && !googleProfile.credential && !googleProfile.idToken) {
+      return { success: false, error: "Google credentials or email is required" };
     }
 
     try {
