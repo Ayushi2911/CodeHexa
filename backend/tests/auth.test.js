@@ -70,6 +70,7 @@ describe("Auth Controller Unit Tests", () => {
         email: "explorer@gmail.com",
         country: "United States",
         location: "San Francisco",
+        avatar: "https://lh3.googleusercontent.com/a/default-user",
       },
     };
     const res = createMockRes();
@@ -79,6 +80,42 @@ describe("Auth Controller Unit Tests", () => {
     assert.strictEqual(res.body.ok, true);
     assert.strictEqual(res.body.user.authProvider, "google");
     assert.strictEqual(res.body.user.country, "United States");
+    assert.strictEqual(res.body.user.avatar, "https://lh3.googleusercontent.com/a/default-user");
+    assert.ok(res.body.token);
+  });
+
+  it("should handle Google authentication with Google ID token credential JWT", async () => {
+    // Generate a mock base64url encoded JWT payload
+    const payload = {
+      email: "alex.rivera.google@gmail.com",
+      name: "Alex Rivera",
+      picture: "https://lh3.googleusercontent.com/a/alex-photo-url",
+      sub: "google-sub-109283746",
+      email_verified: true,
+    };
+    const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
+    const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    const fakeSignature = "mock_signature_bytes";
+    const mockJwt = `${header}.${payloadB64}.${fakeSignature}`;
+
+    const req = {
+      app: { locals: { dbConnected: false } },
+      body: {
+        credential: mockJwt,
+        country: "India",
+        location: "Bangalore",
+      },
+    };
+    const res = createMockRes();
+
+    await authController.googleAuth(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(res.body.user.email, "alex.rivera.google@gmail.com");
+    assert.strictEqual(res.body.user.name, "Alex Rivera");
+    assert.strictEqual(res.body.user.avatar, "https://lh3.googleusercontent.com/a/alex-photo-url");
+    assert.strictEqual(res.body.user.googleId, "google-sub-109283746");
+    assert.strictEqual(res.body.user.authProvider, "google");
   });
 
   it("should reject login if email is NOT registered", async () => {

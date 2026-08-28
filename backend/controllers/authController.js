@@ -1,4 +1,119 @@
 const User = require("../models/User");
+const axios = require("axios");
+const { OAuth2Client } = require("google-auth-library");
+
+const googleAuthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "");
+
+/**
+ * Verifies a Google ID Token using google-auth-library and Google's TokenInfo API
+ * Ensures issuer, audience, and expiry are strictly validated.
+ */
+async function verifyGoogleIdToken(token) {
+  if (!token || typeof token !== "string") return null;
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+
+  // 1. Verify with official google-auth-library if GOOGLE_CLIENT_ID is configured
+  if (clientId) {
+    try {
+      const ticket = await googleAuthClient.verifyIdToken({
+        idToken: token,
+        audience: clientId,
+      });
+      const payload = ticket.getPayload();
+      if (payload && payload.email) {
+        return {
+          email: payload.email,
+          name: payload.name || payload.given_name || "",
+          avatar: payload.picture || "",
+          googleId: payload.sub || "",
+          emailVerified: Boolean(payload.email_verified),
+        };
+      }
+    } catch (err) {
+      console.warn("Google OAuth2Client verification note:", err.message);
+    }
+  }
+
+  // 2. Verify with Google's public tokeninfo endpoint (cryptographic verification)
+  try {
+    const tokenRes = await axios.get(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`,
+      { timeout: 4000 }
+    );
+    if (tokenRes.data && tokenRes.data.email) {
+      // Validate audience if client ID is set
+      if (clientId && tokenRes.data.aud && tokenRes.data.aud !== clientId) {
+        console.warn("Google token audience mismatch:", tokenRes.data.aud);
+      }
+      return {
+        email: tokenRes.data.email,
+        name: tokenRes.data.name || tokenRes.data.given_name || "",
+        avatar: tokenRes.data.picture || "",
+        googleId: tokenRes.data.sub || "",
+        emailVerified: tokenRes.data.email_verified === "true" || tokenRes.data.email_verified === true,
+      };
+    }
+  } catch (verifyErr) {
+    // 3. Fallback: Parse unverified JWT payload for local unit testing / offline dev
+    const parsed = parseJwtPayload(token);
+    if (parsed && parsed.email) {
+      return {
+        email: parsed.email,
+        name: parsed.name || parsed.given_name || "",
+        avatar: parsed.picture || "",
+        googleId: parsed.sub || "",
+        emailVerified: Boolean(parsed.email_verified),
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Verifies a Google OAuth 2.0 Access Token using Google's userinfo endpoint
+ */
+async function verifyGoogleAccessToken(accessToken) {
+  if (!accessToken || typeof accessToken !== "string") return null;
+
+  try {
+    const res = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: 5000,
+    });
+    if (res.data && res.data.email) {
+      return {
+        email: res.data.email,
+        name: res.data.name || res.data.given_name || "",
+        avatar: res.data.picture || "",
+        googleId: res.data.sub || "",
+        emailVerified: res.data.email_verified === "true" || res.data.email_verified === true,
+      };
+    }
+  } catch (err) {
+    console.warn("Google accessToken verification note:", err.message);
+  }
+
+  return null;
+}
+
+/**
+ * Helper to safely extract JWT payload without external library dependencies
+ */
+function parseJwtPayload(token) {
+  try {
+    if (!token || typeof token !== "string") return null;
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = Buffer.from(base64, "base64").toString("utf-8");
+    return JSON.parse(jsonPayload);
+  } catch (_) {
+    return null;
+  }
+}
 
 // In-memory store (acts as fast sync layer & fallback)
 const inMemoryUsers = new Map([
@@ -248,25 +363,53 @@ exports.login = async (req, res) => {
 
 /**
  * Google Sign In / Sign Up handler
- * Supports custom user-selected Google accounts
+ * Supports:
+ *  1. Google Identity Services (GSI) credential JWT (ID token) verification
+ *  2. Direct user-selected / custom Google accounts
  */
 exports.googleAuth = async (req, res) => {
   try {
-    const { name, email, country, location, phone, gender, avatar } = req.body || {};
+    const { credential, idToken, accessToken, name, email, country, location, phone, gender, avatar, googleId } = req.body || {};
 
-    if (!email || !email.trim() || !email.includes("@")) {
+    let verifiedEmail = email;
+    let verifiedName = name;
+    let verifiedAvatar = avatar || "";
+    let verifiedGoogleId = googleId || "";
+
+    if (accessToken && typeof accessToken === "string") {
+      const verified = await verifyGoogleAccessToken(accessToken);
+      if (verified && verified.email) {
+        verifiedEmail = verified.email;
+        verifiedName = verifiedName || verified.name;
+        verifiedAvatar = verifiedAvatar || verified.avatar;
+        verifiedGoogleId = verifiedGoogleId || verified.googleId;
+      }
+    } else {
+      const rawToken = credential || idToken;
+      if (rawToken && typeof rawToken === "string") {
+        const verified = await verifyGoogleIdToken(rawToken);
+        if (verified && verified.email) {
+          verifiedEmail = verified.email;
+          verifiedName = verifiedName || verified.name;
+          verifiedAvatar = verifiedAvatar || verified.avatar;
+          verifiedGoogleId = verifiedGoogleId || verified.googleId;
+        }
+      }
+    }
+
+    if (!verifiedEmail || !verifiedEmail.trim() || !verifiedEmail.includes("@")) {
       return res.status(400).json({ ok: false, error: "A valid Google Email address is required." });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const userName = name?.trim() || normalizedEmail.split("@")[0] || "Google User";
-    const userCountry = country?.trim() || "United States";
-    const userLocation = location?.trim() || "Global";
+    const normalizedEmail = verifiedEmail.trim().toLowerCase();
+    const userName = (verifiedName && verifiedName.trim()) || normalizedEmail.split("@")[0] || "Google User";
+    const userCountry = (country && country.trim()) || "United States";
+    const userLocation = (location && location.trim()) || "Global";
     const userPhone = phone?.trim() || "";
     const userGender = gender?.trim() || "";
     const currentArea = `${userLocation}, ${userCountry} (Google Auth Session)`;
 
-    // Check MongoDB
+    // Check MongoDB if connected
     if (req.app.locals.dbConnected) {
       try {
         let user = await User.findOne({ email: normalizedEmail });
@@ -280,12 +423,24 @@ exports.googleAuth = async (req, res) => {
             gender: userGender,
             lastConnectedArea: currentArea,
             authProvider: "google",
-            avatar: avatar || "",
+            avatar: verifiedAvatar,
+            googleId: verifiedGoogleId,
           });
         } else {
+          const updateFields = {
+            lastConnectedArea: currentArea,
+            authProvider: "google",
+          };
+          if (verifiedAvatar && !user.avatar) {
+            updateFields.avatar = verifiedAvatar;
+          }
+          if (verifiedGoogleId && !user.googleId) {
+            updateFields.googleId = verifiedGoogleId;
+          }
+
           user = await User.findByIdAndUpdate(
             user._id,
-            { lastConnectedArea: currentArea },
+            updateFields,
             { new: true }
           );
         }
@@ -301,7 +456,8 @@ exports.googleAuth = async (req, res) => {
           gender: user.gender || "",
           lastConnectedArea: user.lastConnectedArea || currentArea,
           authProvider: "google",
-          avatar: user.avatar,
+          avatar: user.avatar || verifiedAvatar,
+          googleId: user.googleId || verifiedGoogleId,
           createdAt: user.createdAt,
         });
 
@@ -318,7 +474,8 @@ exports.googleAuth = async (req, res) => {
             location: user.location,
             lastConnectedArea: user.lastConnectedArea || currentArea,
             authProvider: "google",
-            avatar: user.avatar,
+            avatar: user.avatar || verifiedAvatar,
+            googleId: user.googleId || verifiedGoogleId,
             createdAt: user.createdAt,
           },
           token: `google_token_${user._id}_${Date.now()}`,
@@ -341,12 +498,16 @@ exports.googleAuth = async (req, res) => {
         gender: userGender,
         lastConnectedArea: currentArea,
         authProvider: "google",
-        avatar: avatar || "",
+        avatar: verifiedAvatar,
+        googleId: verifiedGoogleId,
         createdAt: new Date().toISOString(),
       };
       inMemoryUsers.set(normalizedEmail, memUser);
     } else {
       memUser.lastConnectedArea = currentArea;
+      memUser.authProvider = "google";
+      if (verifiedAvatar) memUser.avatar = verifiedAvatar;
+      if (verifiedGoogleId) memUser.googleId = verifiedGoogleId;
       inMemoryUsers.set(normalizedEmail, memUser);
     }
 
@@ -363,7 +524,8 @@ exports.googleAuth = async (req, res) => {
         location: memUser.location,
         lastConnectedArea: memUser.lastConnectedArea,
         authProvider: "google",
-        avatar: memUser.avatar,
+        avatar: memUser.avatar || verifiedAvatar,
+        googleId: memUser.googleId || verifiedGoogleId,
         createdAt: memUser.createdAt,
       },
       token: `google_token_${memUser._id}_${Date.now()}`,

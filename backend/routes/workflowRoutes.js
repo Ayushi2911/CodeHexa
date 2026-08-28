@@ -1,59 +1,53 @@
-const express =require("express");
+const express = require("express");
+const controller = require("../controllers/workflowController");
 
-const controller =require("../controllers/workflowController");
+const router = express.Router();
 
-const router =express.Router();
+// Detection, Validation & Direct Execution
+router.post("/detect", controller.detect);
+router.post("/validate", controller.validateEndpoint);
+router.post("/execute", controller.executeWorkflowDirect);
 
-router.post("/detect",controller.detect);
+// Workflows Collection CRUD
+router.get("/", controller.getAll);
+router.get("/list", controller.getAll);
+router.post("/", controller.create);
+router.post("/create", controller.create);
 
-router.post("/create",controller.create);
+// Aggregations, Templates, Stats & History
+router.get("/stats", controller.getStats);
+router.get("/templates", controller.getTemplates);
+router.get("/recent", controller.getRecent);
+router.get("/history", controller.getHistory);
+router.post("/history", controller.saveHistory);
 
-router.post("/",controller.create);
+// AI & Bedrock Model Tests
+router.post("/llm/test", controller.testLLM);
+router.post("/vlm/test", controller.testVLM);
 
-router.get("/list",controller.getAll);
+// Execution Runs & Traces
+router.get("/run/:runId", controller.runById);
+router.get("/runs/:id", controller.runs);
+router.get("/:id/runs", controller.runs);
+router.post("/trigger/:id", controller.trigger);
+router.post("/:id/trigger", controller.trigger);
 
-router.get("/",controller.getAll);
+// Single Workflow Operations & Status Updates
+router.get("/:id", controller.getById);
+router.put("/:id", controller.update);
+router.patch("/:id", controller.update);
+router.patch("/:id/status", controller.updateStatus);
+router.delete("/:id", controller.softDelete);
 
-router.get("/stats",controller.getStats);
-router.get("/templates",controller.getTemplates);
-router.get("/recent",controller.getRecent);
-router.get("/history",controller.getHistory);
-router.post("/history",controller.saveHistory);
+// Versioning, Publishing & Agent Editing
+router.post("/:id/validate", controller.validateById);
+router.post("/:id/version", controller.createVersion);
+router.get("/:id/versions", controller.versions);
+router.post("/:id/publish", controller.publish);
+router.post("/:id/draft", controller.createDraft);
+router.post("/:id/agent-edit", controller.agentEdit);
+router.post("/:id/agent-edit/apply", controller.applyAgentEdit);
+router.post("/:id/apply-edit", controller.applyAgentEdit);
+router.get("/:id/export", controller.exportWorkflow);
 
-router.post("/validate",controller.validateEndpoint);
-
-router.get("/run/:runId",controller.runById);
-
-router.get("/runs/:id",controller.runs);
-
-router.post("/trigger/:id",controller.trigger);
-
-router.post("/:id/validate",controller.validateById);
-
-router.post("/:id/version",controller.createVersion);
-
-router.get("/:id/versions",controller.versions);
-
-router.post("/:id/publish",controller.publish);
-
-router.post("/:id/draft",controller.createDraft);
-router.post("/:id/agent-edit",controller.agentEdit);
-
-router.post("/:id/agent-edit/apply",controller.applyAgentEdit);
-
-router.get("/:id/export",controller.exportWorkflow);
-
-router.patch("/:id",controller.update);
-router.put("/:id",controller.update);
-router.delete("/:id",controller.softDelete);
-router.post(
-  "/llm/test",
-  controller.testLLM
-);
-router.post(
-  "/vlm/test",
-  controller.testVLM
-);
-router.get("/:id",controller.getById);
-
-module.exports =router;
+module.exports = router;

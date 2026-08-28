@@ -308,6 +308,44 @@ router.post(
   }
 );
 
-module.exports =
-  router;
+router.get("/schemas", (req, res) => {
+  res.json({
+    ok: true,
+    data: [
+      { name: "orders", title: "Orders Schema", fields: ["orderId", "totalAmount", "stock_type", "customerId", "status"] },
+      { name: "invoices", title: "Invoices Schema", fields: ["invoiceId", "orderId", "amount", "dueDate", "paid"] },
+      { name: "inventory", title: "Inventory Schema", fields: ["itemId", "productName", "quantity", "warehouseLocation"] },
+      { name: "complaints", title: "Complaints Schema", fields: ["ticketId", "customerId", "description", "priority", "status"] },
+      { name: "applications", title: "Applications Schema", fields: ["applicantId", "name", "role", "resumeUrl", "stage"] },
+      { name: "assets", title: "Asset Requests Schema", fields: ["requestId", "assetType", "requesterId", "status"] },
+      { name: "users", title: "Users Schema", fields: ["userId", "name", "email", "country", "location"] },
+    ],
+  });
+});
+
+router.get("/functions", (req, res) => {
+  res.json({
+    ok: true,
+    data: [
+      { name: "NotifyVendorOnOrder", description: "Sends vendor dispatch notifications" },
+      { name: "SendOrderConfirmation", description: "Sends customer confirmation emails" },
+      { name: "ValidateAssetRequest", description: "Validates asset request requirements" },
+      { name: "NotifyApproverOnRequest", description: "Notifies team approver" },
+      { name: "NotifyRejection", description: "Notifies user of rejected status" },
+      { name: "VerifyInvoice", description: "Performs finance invoice verification" },
+      { name: "ReleasePayment", description: "Releases vendor payment gateway disbursement" },
+      { name: "LocateCustomer", description: "Queries CRM records for customer details" },
+      { name: "NotifyQualityManager", description: "Notifies QA manager of complaint" },
+      { name: "GenerateServiceDiagnosis", description: "Generates automated service diagnostics" },
+      { name: "CheckProductWarranty", description: "Checks warranty validity in database" },
+      { name: "SendRepairInstructions", description: "Dispatches repair guidelines to user" },
+      { name: "NotifyCustomerCRM", description: "Updates CRM ticket and notifies customer" },
+      { name: "ConfirmApplicationReceipt", description: "Sends job applicant confirmation" },
+      { name: "NegotiateInterview", description: "Schedules interview rounds" },
+      { name: "SubmitCompanyRating", description: "Submits candidate feedback and company rating" },
+    ],
+  });
+});
+
+module.exports = router;
   

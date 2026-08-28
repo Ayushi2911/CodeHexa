@@ -78,6 +78,109 @@ describe("PS11 API Integration Tests", () => {
     assert.strictEqual(res.body.data.valid, true);
   });
 
+  it("should return list of workflows via getAll", async () => {
+    const req = { query: {} };
+    const res = createMockRes();
+
+    await workflowController.getAll(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data));
+    assert.ok(res.body.data.length >= 1);
+  });
+
+  it("should get workflow by ID via getById", async () => {
+    const req = { params: { id: "demo-1" } };
+    const res = createMockRes();
+
+    await workflowController.getById(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(res.body.data.id, "demo-1");
+  });
+
+  it("should create a new workflow via create", async () => {
+    const req = {
+      body: {
+        projectName: "sample-flow",
+        workflowName: "Brand New Pipeline",
+        description: "Testing API creation",
+        triggerEvent: { name: "Order Created", type: "formCreate", schema: "orders" },
+        steps: [
+          {
+            stepId: "step-001",
+            name: "Notify Vendor",
+            order: 1,
+            actionType: "function",
+            functionName: "NotifyVendorOnOrder",
+            inputMapping: { orderId: "{{trigger._id}}" },
+            onSuccess: null,
+            onFailure: "abort",
+          },
+        ],
+      },
+    };
+    const res = createMockRes();
+
+    await workflowController.create(req, res);
+    assert.strictEqual(res.statusCode, 201);
+    assert.strictEqual(res.body.ok, true);
+    assert.ok(res.body.data.id || res.body.data._id);
+  });
+
+  it("should update workflow status via updateStatus", async () => {
+    const req = {
+      params: { id: "demo-2" },
+      body: { status: "active" },
+    };
+    const res = createMockRes();
+
+    await workflowController.updateStatus(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(res.body.data.status, "active");
+  });
+
+  it("should execute workflow directly via executeWorkflowDirect", async () => {
+    const req = {
+      body: {
+        workflow: {
+          projectName: "sample-flow",
+          workflowName: "Sample Workflow",
+          steps: [
+            {
+              stepId: "step-001",
+              name: "Step One",
+              order: 1,
+              actionType: "function",
+              functionName: "NotifyVendorOnOrder",
+              inputMapping: {},
+              onSuccess: null,
+              onFailure: "abort",
+            },
+          ],
+        },
+        triggerPayload: { orderId: "ORD-999" },
+        options: { dryRun: true, persist: false },
+      },
+    };
+    const res = createMockRes();
+
+    await workflowController.executeWorkflowDirect(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+  });
+
+  it("should return workflow templates via getTemplates", async () => {
+    const req = {};
+    const res = createMockRes();
+
+    await workflowController.getTemplates(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data.templates));
+  });
+
   it("should return recent workflows with step structures via getRecent", async () => {
     const req = {};
     const res = createMockRes();

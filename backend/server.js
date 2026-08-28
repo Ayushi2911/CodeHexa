@@ -34,8 +34,11 @@ const formsRoutes = require("./routes/formsRoutes");
 const authRoutes = require("./routes/authRoutes");
 
 app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
 app.use("/api/workflows", workflowRoutes);
+app.use("/workflows", workflowRoutes);
 app.use("/workflow", workflowRoutes);
+app.use("/api/forms", formsRoutes);
 app.use("/forms", formsRoutes);
 
 app.get(
@@ -43,30 +46,30 @@ app.get(
   (req, res) =>
     res.json({
       ok: true,
-
-      message:
-        "CodeHexa PS11 backend is running",
-
-      project:
-        "PS11 - Business Workflow Detection & Diagram Generation",
+      message: "CodeHexa PS11 backend is running",
+      project: "PS11 - Business Workflow Detection & Diagram Generation",
+      endpoints: {
+        auth: "/api/auth",
+        workflows: "/api/workflows",
+        forms: "/api/forms",
+        health: "/api/health"
+      }
     })
 );
 
 app.get(
-  "/api/health",
-
+  ["/api/health", "/health"],
   (req, res) =>
     res.json({
       ok: true,
-
-      status:
-        "healthy",
-
+      status: "healthy",
       database:
         app.locals
           .dbConnected
           ? "connected"
-          : "not connected",
+          : "not connected (in-memory mode)",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
     })
 );
 
