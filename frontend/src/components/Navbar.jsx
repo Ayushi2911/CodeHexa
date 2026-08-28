@@ -146,7 +146,6 @@ function Navbar({
             <span className="theme-icon">
               {theme === "dark" ? "☀️" : "🌙"}
             </span>
-<<<<<<< HEAD
           </button>
 
           {/* Guest Mode vs Logged In Actions */}
@@ -178,9 +177,18 @@ function Navbar({
                 type="button"
                 title={`Click to manage profile: ${user.name} (${user.email})`}
               >
-                <span className="user-avatar-circle">{getInitials(user.name)}</span>
+                {user.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="user-avatar-img" />
+                ) : (
+                  <span className="user-avatar-circle">{getInitials(user.name)}</span>
+                )}
                 <div className="user-name-col">
-                  <strong className="nav-user-name">{user.name}</strong>
+                  <div className="nav-user-name-row">
+                    <strong className="nav-user-name">{user.name}</strong>
+                    {user.authProvider === "google" && (
+                      <span className="nav-google-pill" title="Signed in with Google">G</span>
+                    )}
+                  </div>
                   <small className="nav-user-loc">{user.location ? `${user.location}, ` : ""}{user.country || "Global"}</small>
                 </div>
                 <span className="profile-chip-arrow">▾</span>
@@ -217,57 +225,6 @@ function Navbar({
             {isMobileMenuOpen ? "✕" : "☰"}
           </button>
         </div>
-=======
-            <button
-              className="nav-login-btn"
-              onClick={() => openLogin("Sign in to your CodeHexa Flow account")}
-              type="button"
-            >
-              Log In
-            </button>
-            <button
-              className="nav-signup-btn"
-              onClick={() => openRegister("Create your free CodeHexa Flow account")}
-              type="button"
-            >
-              Sign Up
-            </button>
-          </div>
-        ) : (
-          <div className="nav-user-group">
-            <button
-              className="nav-user-profile-chip"
-              onClick={openProfileModal}
-              type="button"
-              title={`Click to manage profile: ${user.name} (${user.email})`}
-            >
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="user-avatar-img" />
-              ) : (
-                <span className="user-avatar-circle">{getInitials(user.name)}</span>
-              )}
-              <div className="user-name-col">
-                <div className="nav-user-name-row">
-                  <strong className="nav-user-name">{user.name}</strong>
-                  {user.authProvider === "google" && (
-                    <span className="nav-google-pill" title="Signed in with Google">G</span>
-                  )}
-                </div>
-                <small className="nav-user-loc">{user.location ? `${user.location}, ` : ""}{user.country || "Global"}</small>
-              </div>
-              <span className="profile-chip-arrow">▾</span>
-            </button>
-            <button
-              className="nav-logout-btn"
-              onClick={logout}
-              type="button"
-              title="Sign out to Guest Mode"
-            >
-              Log Out
-            </button>
-          </div>
-        )}
->>>>>>> 006c1b8 (configuring google sign in fixing client id error)
       </div>
 
       {/* Mobile Drawer / Overlay Menu */}
