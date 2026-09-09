@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
 function Navbar({
@@ -9,14 +8,12 @@ function Navbar({
   onToggleTheme,
 }) {
   const { user, isGuest, openLogin, openRegister, logout, openProfileModal } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const scrollTo = (e, targetId) => {
     e.preventDefault();
-    setIsMobileMenuOpen(false);
     const el = document.getElementById(targetId);
     if (el) {
-      const navOffset = 75;
+      const navOffset = 62;
       const elementPosition = el.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navOffset;
 
@@ -37,23 +34,34 @@ function Navbar({
     return name.slice(0, 2).toUpperCase();
   };
 
+  const homeOrDashboardId = isGuest ? "home" : "dashboard";
+  const homeOrDashboardLabel = isGuest ? "Home" : "Dashboard";
+
   return (
     <nav className="navbar">
-      <div className="nav-container">
-        <a className="logo" href="#home" onClick={(e) => scrollTo(e, "home")}>
+      <div className="navbar-left">
+        <a
+          className="logo"
+          href={`#${homeOrDashboardId}`}
+          onClick={(e) => scrollTo(e, homeOrDashboardId)}
+        >
           <span className="logo-mark">✦</span>
           CodeHexa<span>Flow</span>
         </a>
 
-        {/* Desktop Navigation Links */}
-        <div className="nav-links desktop-nav-links">
+        <div className="nav-links">
+          {/* 1. Home (Guest) or Dashboard (Logged in) */}
           <a
-            href="#home"
-            onClick={(e) => scrollTo(e, "home")}
-            className={`nav-link ${activeSection === "home" ? "active" : ""}`}
+            href={`#${homeOrDashboardId}`}
+            onClick={(e) => scrollTo(e, homeOrDashboardId)}
+            className={`nav-link ${
+              activeSection === (isGuest ? "home" : "dashboard") ? "active" : ""
+            }`}
           >
-            Home
+            {homeOrDashboardLabel}
           </a>
+
+          {/* 2. Workflows (Workflow Studio) */}
           <a
             href="#builder"
             onClick={(e) => scrollTo(e, "builder")}
@@ -61,6 +69,18 @@ function Navbar({
           >
             Workflows
           </a>
+
+          {/* 3. History (Opens History Drawer right after Workflows) */}
+          <button
+            className="nav-link nav-history-btn"
+            onClick={onOpenHistory}
+            type="button"
+            title="View Workflow Execution History"
+          >
+            History
+          </button>
+
+          {/* 4. Templates */}
           <a
             href="#templates"
             onClick={(e) => scrollTo(e, "templates")}
@@ -68,6 +88,8 @@ function Navbar({
           >
             Templates
           </a>
+
+          {/* 5. Features */}
           <a
             href="#features"
             onClick={(e) => scrollTo(e, "features")}
@@ -76,23 +98,7 @@ function Navbar({
             Features
           </a>
 
-          {!isGuest && (
-            <a
-              href="#dashboard"
-              onClick={(e) => scrollTo(e, "dashboard")}
-              className={`nav-link ${activeSection === "dashboard" ? "active" : ""}`}
-            >
-              Dashboard
-            </a>
-          )}
-
-          <a
-            href="#about"
-            onClick={(e) => scrollTo(e, "about")}
-            className={`nav-link ${activeSection === "about" ? "active" : ""}`}
-          >
-            About
-          </a>
+          {/* 6. Demo (Placed after Features) */}
           <a
             href="#demo"
             onClick={(e) => scrollTo(e, "demo")}
@@ -101,16 +107,16 @@ function Navbar({
             Demo
           </a>
 
-          {!isGuest && (
-            <a
-              href="#help"
-              onClick={(e) => scrollTo(e, "help")}
-              className={`nav-link ${activeSection === "help" ? "active" : ""}`}
-            >
-              Help
-            </a>
-          )}
+          {/* 7. About */}
+          <a
+            href="#about"
+            onClick={(e) => scrollTo(e, "about")}
+            className={`nav-link ${activeSection === "about" ? "active" : ""}`}
+          >
+            About
+          </a>
 
+          {/* 8. Contact */}
           <a
             href="#contact"
             onClick={(e) => scrollTo(e, "contact")}
@@ -119,264 +125,81 @@ function Navbar({
             Contact
           </a>
 
-          {!isGuest && (
-            <button
-              className="history-btn"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                onOpenHistory();
-              }}
-              type="button"
-            >
-              History
-            </button>
-          )}
-        </div>
-
-        {/* Navbar Actions & Auth */}
-        <div className="navbar-actions desktop-actions">
-          {/* Theme Toggle */}
-          <button
-            className="theme-btn"
-            onClick={onToggleTheme}
-            type="button"
-            aria-label="Toggle Theme"
-            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+          {/* 9. Help */}
+          <a
+            href="#help"
+            onClick={(e) => scrollTo(e, "help")}
+            className={`nav-link ${activeSection === "help" ? "active" : ""}`}
           >
-            <span className="theme-icon">
-              {theme === "dark" ? "☀️" : "🌙"}
-            </span>
-          </button>
-
-          {/* Guest Mode vs Logged In Actions */}
-          {isGuest ? (
-            <div className="nav-auth-group">
-              <span className="nav-guest-pill" title="You are currently browsing as a guest">
-                ● Guest
-              </span>
-              <button
-                className="nav-login-btn"
-                onClick={() => openLogin("Sign in to your CodeHexa Flow account")}
-                type="button"
-              >
-                Log In
-              </button>
-              <button
-                className="nav-signup-btn"
-                onClick={() => openRegister("Create your free CodeHexa Flow account")}
-                type="button"
-              >
-                Sign Up
-              </button>
-            </div>
-          ) : (
-            <div className="nav-user-group">
-              <button
-                className="nav-user-profile-chip"
-                onClick={openProfileModal}
-                type="button"
-                title={`Click to manage profile: ${user.name} (${user.email})`}
-              >
-                {user.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="user-avatar-img" />
-                ) : (
-                  <span className="user-avatar-circle">{getInitials(user.name)}</span>
-                )}
-                <div className="user-name-col">
-                  <div className="nav-user-name-row">
-                    <strong className="nav-user-name">{user.name}</strong>
-                    {user.authProvider === "google" && (
-                      <span className="nav-google-pill" title="Signed in with Google">G</span>
-                    )}
-                  </div>
-                  <small className="nav-user-loc">{user.location ? `${user.location}, ` : ""}{user.country || "Global"}</small>
-                </div>
-                <span className="profile-chip-arrow">▾</span>
-              </button>
-              <button
-                className="nav-logout-btn"
-                onClick={logout}
-                type="button"
-                title="Sign out to Guest Mode"
-              >
-                Log Out
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Hamburger Button */}
-        <div className="mobile-nav-toggle-wrap">
-          <button
-            className="theme-btn mobile-theme-btn"
-            onClick={onToggleTheme}
-            type="button"
-            aria-label="Toggle Theme"
-          >
-            <span>{theme === "dark" ? "☀️" : "🌙"}</span>
-          </button>
-          
-          <button
-            className={`nav-mobile-toggle ${isMobileMenuOpen ? "open" : ""}`}
-            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            type="button"
-            aria-label="Toggle navigation menu"
-          >
-            {isMobileMenuOpen ? "✕" : "☰"}
-          </button>
+            Help
+          </a>
         </div>
       </div>
 
-      {/* Mobile Drawer / Overlay Menu */}
-      {isMobileMenuOpen && (
-        <div className="mobile-nav-drawer" onClick={() => setIsMobileMenuOpen(false)}>
-          <div className="mobile-nav-content" onClick={(e) => e.stopPropagation()}>
-            <div className="mobile-auth-header">
-              {isGuest ? (
-                <div className="mobile-guest-block">
-                  <div className="mobile-guest-badge">● Guest Mode Active</div>
-                  <div className="mobile-auth-actions">
-                    <button
-                      className="nav-login-btn full-width"
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        openLogin("Sign in to your CodeHexa Flow account");
-                      }}
-                      type="button"
-                    >
-                      Log In
-                    </button>
-                    <button
-                      className="nav-signup-btn full-width"
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        openRegister("Create your free CodeHexa Flow account");
-                      }}
-                      type="button"
-                    >
-                      Sign Up
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="mobile-user-block">
-                  <div
-                    className="mobile-user-info-row"
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      openProfileModal();
-                    }}
-                  >
-                    <span className="user-avatar-circle">{getInitials(user.name)}</span>
-                    <div className="user-name-col">
-                      <strong className="nav-user-name">{user.name}</strong>
-                      <small className="nav-user-loc">{user.email}</small>
-                    </div>
-                    <span className="profile-chip-arrow">➔</span>
-                  </div>
-                  <button
-                    className="nav-logout-btn mobile-logout-btn"
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      logout();
-                    }}
-                    type="button"
-                  >
-                    🚪 Log Out
-                  </button>
-                </div>
-              )}
-            </div>
+      <div className="navbar-actions">
+        {/* Theme Toggle */}
+        <button
+          className="theme-btn"
+          onClick={onToggleTheme}
+          type="button"
+          aria-label="Toggle Theme"
+          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+        >
+          <span className="theme-icon">
+            {theme === "dark" ? "☀️" : "🌙"}
+          </span>
+        </button>
 
-            <div className="mobile-nav-links-list">
-              <a
-                href="#home"
-                onClick={(e) => scrollTo(e, "home")}
-                className={`mobile-nav-item ${activeSection === "home" ? "active" : ""}`}
-              >
-                🏠 Home
-              </a>
-              <a
-                href="#builder"
-                onClick={(e) => scrollTo(e, "builder")}
-                className={`mobile-nav-item ${activeSection === "builder" ? "active" : ""}`}
-              >
-                ⚡ Workflows Studio
-              </a>
-              <a
-                href="#templates"
-                onClick={(e) => scrollTo(e, "templates")}
-                className={`mobile-nav-item ${activeSection === "templates" ? "active" : ""}`}
-              >
-                📦 Templates Library
-              </a>
-              <a
-                href="#features"
-                onClick={(e) => scrollTo(e, "features")}
-                className={`mobile-nav-item ${activeSection === "features" ? "active" : ""}`}
-              >
-                ✨ Features
-              </a>
-
-              {!isGuest && (
-                <a
-                  href="#dashboard"
-                  onClick={(e) => scrollTo(e, "dashboard")}
-                  className={`mobile-nav-item ${activeSection === "dashboard" ? "active" : ""}`}
-                >
-                  📊 Analytics Dashboard
-                </a>
-              )}
-
-              <a
-                href="#about"
-                onClick={(e) => scrollTo(e, "about")}
-                className={`mobile-nav-item ${activeSection === "about" ? "active" : ""}`}
-              >
-                ℹ️ About Platform
-              </a>
-              <a
-                href="#demo"
-                onClick={(e) => scrollTo(e, "demo")}
-                className={`mobile-nav-item ${activeSection === "demo" ? "active" : ""}`}
-              >
-                🎬 Interactive Demo
-              </a>
-
-              {!isGuest && (
-                <a
-                  href="#help"
-                  onClick={(e) => scrollTo(e, "help")}
-                  className={`mobile-nav-item ${activeSection === "help" ? "active" : ""}`}
-                >
-                  ❓ Help & FAQ
-                </a>
-              )}
-
-              <a
-                href="#contact"
-                onClick={(e) => scrollTo(e, "contact")}
-                className={`mobile-nav-item ${activeSection === "contact" ? "active" : ""}`}
-              >
-                ✉️ Contact Support
-              </a>
-
-              {!isGuest && (
-                <button
-                  className="mobile-nav-item mobile-history-item"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onOpenHistory();
-                  }}
-                  type="button"
-                >
-                  📜 Workflow Run History
-                </button>
-              )}
-            </div>
+        {/* Guest Mode vs Logged In Actions */}
+        {isGuest ? (
+          <div className="nav-auth-group">
+            <span className="nav-guest-pill" title="You are currently browsing as a guest">
+              ● Guest Mode
+            </span>
+            <button
+              className="nav-login-btn"
+              onClick={() => openLogin("Sign in to your CodeHexa Flow account")}
+              type="button"
+            >
+              Log In
+            </button>
+            <button
+              className="nav-signup-btn"
+              onClick={() => openRegister("Create your free CodeHexa Flow account")}
+              type="button"
+            >
+              Sign Up
+            </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="nav-user-group">
+            <button
+              className="nav-user-profile-chip"
+              onClick={openProfileModal}
+              type="button"
+              title={`Click to manage profile: ${user?.name || "User"} (${user?.email || ""})`}
+            >
+              <span className="user-avatar-circle">{getInitials(user?.name)}</span>
+              <div className="user-name-col">
+                <strong className="nav-user-name">{user?.name || "User"}</strong>
+                <small className="nav-user-loc">
+                  {user?.location ? `${user.location}, ` : ""}
+                  {user?.country || "Global"}
+                </small>
+              </div>
+              <span className="profile-chip-arrow">▾</span>
+            </button>
+            <button
+              className="nav-logout-btn"
+              onClick={logout}
+              type="button"
+              title="Sign out to Guest Mode"
+            >
+              Log Out
+            </button>
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

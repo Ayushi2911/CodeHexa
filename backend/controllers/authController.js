@@ -1,8 +1,14 @@
 const User = require("../models/User");
 const axios = require("axios");
-const { OAuth2Client } = require("google-auth-library");
 
-const googleAuthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "");
+let OAuth2Client = null;
+try {
+  OAuth2Client = require("google-auth-library").OAuth2Client;
+} catch (_) {
+  // Optional google-auth-library fallback
+}
+
+const googleAuthClient = OAuth2Client ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "") : null;
 
 /**
  * Verifies a Google ID Token using google-auth-library and Google's TokenInfo API
@@ -14,7 +20,7 @@ async function verifyGoogleIdToken(token) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
 
   // 1. Verify with official google-auth-library if GOOGLE_CLIENT_ID is configured
-  if (clientId) {
+  if (clientId && googleAuthClient) {
     try {
       const ticket = await googleAuthClient.verifyIdToken({
         idToken: token,

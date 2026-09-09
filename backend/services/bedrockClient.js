@@ -135,13 +135,28 @@ async function generateStructuredWorkflow({
   context = {},
   examplePayload = null,
 }) {
-  const systemPrompt = `You are an expert Business Workflow Detection and Architecture Engine for the SIH PS11 Problem Statement.
+  const systemPrompt = `You are an expert Business Workflow Detection and Architecture Engine for enterprise automation.
 Your task is to analyze a natural-language business requirement and project context (schemas, custom functions, buttons), and output an array of one or more structured Workflow IR objects.
+
+Real-World Business Workflow Guidelines:
+1. SENSITIVITY:
+   - If the user provides a simple, direct requirement (e.g. "When an order is created, create invoice and send confirmation"), produce a clean linear workflow without artificial fluff.
+   - If the user requirement contains decision points, condition checks, payment failures, retry attempts, stock availability, approvals, rejections, or exceptions, accurately model them as distinct decision gates, retry loops, and fallback paths.
+2. DECISION GATES & BRANCHES:
+   - For condition checks ("is product in stock?", "is payment successful?", "is applicant qualified?"), use actionType="decision".
+   - Set "condition" with { "field": "{{trigger.fieldName}}" or "{{step-001.outputField}}", "operator": "eq"|"neq"|"gt"|"gte"|"lt"|"lte", "value": ... }.
+   - Set "onSuccess" (or onTrue) to the positive/happy path stepId.
+   - Set "onFailure" (or onFalse) to the fallback/alternate/rejection stepId.
+3. RETRIES & LOOPS:
+   - When a step should retry an earlier action on failure (e.g., "retry payment up to 3 times"), set "retryTarget" to the target stepId (e.g., "step-004") and "onFailure" to the cancellation/fallback stepId if retries are exhausted.
+4. MULTIPLE TERMINAL ENDS:
+   - Successful branches should culminate in success termination (onSuccess: null or "complete").
+   - Failure, cancellation, or rejection branches should culminate in explicit rollback/cancellation actions (e.g. Cancel Order, Send Rejection) with onFailure: "abort" or onSuccess: null.
 
 Canonical Output JSON Schema:
 [
   {
-    "workflowName": "string (PascalCase, e.g. ComplaintProcessing, OrderPlaced, JobApplicationProbation)",
+    "workflowName": "string (PascalCase, e.g. ComplaintProcessing, OrderFulfillment, JobApplicationProbation)",
     "description": "string (human-readable summary)",
     "triggerEvent": {
       "type": "formCreate" | "formUpdate" | "formDelete" | "manual" | "webhook",
@@ -150,13 +165,13 @@ Canonical Output JSON Schema:
     "steps": [
       {
         "stepId": "step-001",
-        "name": "string (e.g. Register Complaint, Check Anomaly, Create Invoice)",
+        "name": "string (e.g. Check Inventory, Is Product In Stock?, Process Payment, Retry Payment, Cancel Order)",
         "order": 1,
-        "actionType": "function" | "formCreate" | "formUpdate" | "formDelete" | "operation",
-        "functionName": "string or null (required if actionType=function)",
-        "schema": "string or null (required if actionType=formCreate/formUpdate/formDelete)",
-        "formId": "string or null (required if actionType=operation)",
-        "buttonId": "string or null (required if actionType=operation)",
+        "actionType": "function" | "formCreate" | "formUpdate" | "formDelete" | "operation" | "decision" | "retry",
+        "functionName": "string or null",
+        "schema": "string or null",
+        "formId": "string or null",
+        "buttonId": "string or null",
         "inputMapping": {
           "fieldKey": "{{trigger.fieldName}}" or "{{step-001.outputField}}" or "literalValue"
         },
@@ -165,8 +180,9 @@ Canonical Output JSON Schema:
           "operator": "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in",
           "value": "string or number or boolean"
         },
-        "onSuccess": "step-002" or null (null for last step),
-        "onFailure": "abort" | "skip" | "step-xxx"
+        "onSuccess": "step-002" or null,
+        "onFailure": "abort" | "skip" | "step-xxx",
+        "retryTarget": "step-xxx" or null
       }
     ],
     "confidence": number (between 0.70 and 0.98),
@@ -177,11 +193,8 @@ Canonical Output JSON Schema:
 Rules:
 1. Every step must have a unique sequential stepId ("step-001", "step-002", etc.).
 2. Step order must be 1-based sequential integers.
-3. onSuccess must point to the next valid stepId or null if it terminates.
-4. onFailure should be "abort" (default for critical steps), "skip" (for optional/conditional steps), or a specific target stepId.
-5. In inputMapping, use handlebars syntax like {{trigger.orderId}} or {{step-001.vendorId}} or literal values.
-6. Check the project context schemas and functions to match relevant real names if available, or generate sensible domain-appropriate names.
-7. Return ONLY valid JSON array with NO conversational commentary.`;
+3. In inputMapping, use handlebars syntax like {{trigger.orderId}} or {{step-001.vendorId}} or literal values.
+4. Return ONLY valid JSON array with NO conversational commentary.`;
 
   const userPrompt = `Project Name: ${projectName}
 Project Context:

@@ -23,6 +23,8 @@ const ACTIONS = [
   "formUpdate",
   "formDelete",
   "operation",
+  "decision",
+  "retry",
 ];
 
 function contextSet(
@@ -235,6 +237,16 @@ function validateWorkflow(
     ) {
       errors.push(
         `${step.stepId}: formId and buttonId are required for operation`
+      );
+    }
+
+    if (
+      step.actionType === "retry" &&
+      step.retryTarget &&
+      !steps.some((s) => s.stepId === step.retryTarget || s.id === step.retryTarget)
+    ) {
+      warnings.push(
+        `${step.stepId}: retryTarget ${step.retryTarget} does not match an existing stepId`
       );
     }
 

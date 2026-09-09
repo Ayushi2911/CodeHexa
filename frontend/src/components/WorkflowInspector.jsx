@@ -57,12 +57,17 @@ function AlertIcon() {
   );
 }
 
-function WorkflowInspector({ selectedStep, onUpdateStep }) {
+function WorkflowInspector({ selectedStep, onUpdateStep, isCollapsed = false, onToggleCollapse }) {
   const [formData, setFormData] = useState({
     name: selectedStep?.name || "",
+    actionType: selectedStep?.actionType || selectedStep?.type || "function",
     target: selectedStep?.target || selectedStep?.schema || selectedStep?.functionName || "",
+    conditionField: selectedStep?.condition?.field || "",
+    conditionOperator: selectedStep?.condition?.operator || "eq",
+    conditionValue: selectedStep?.condition?.value !== undefined ? String(selectedStep.condition.value) : "",
     onSuccess: selectedStep?.onSuccess || "",
-    onFailure: selectedStep?.onFailure || ""
+    onFailure: selectedStep?.onFailure || "",
+    retryTarget: selectedStep?.retryTarget || "",
   });
 
   const [isSaved, setIsSaved] = useState(false);
@@ -72,17 +77,45 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
     if (selectedStep) {
       setFormData({
         name: selectedStep.name || "",
+        actionType: selectedStep.actionType || selectedStep.type || "function",
         target: selectedStep.target || selectedStep.schema || selectedStep.functionName || "",
+        conditionField: typeof selectedStep.condition === "object" ? selectedStep.condition?.field || "" : "",
+        conditionOperator: typeof selectedStep.condition === "object" ? selectedStep.condition?.operator || "eq" : "eq",
+        conditionValue: typeof selectedStep.condition === "object" && selectedStep.condition?.value !== undefined ? String(selectedStep.condition.value) : "",
         onSuccess: selectedStep.onSuccess || "",
-        onFailure: selectedStep.onFailure || ""
+        onFailure: selectedStep.onFailure || "",
+        retryTarget: selectedStep.retryTarget || "",
       });
       setIsSaved(false);
     }
   }, [selectedStep?.id, selectedStep?.stepId]);
 
+  if (isCollapsed) {
+    return (
+      <aside className="workflow-inspector-collapsed" onClick={onToggleCollapse} title="Click to expand Step Inspector">
+        <button type="button" className="expand-inspector-bar-btn" aria-label="Expand Inspector">
+          <span className="expand-icon">◂</span>
+          <span className="expand-text">STEP INSPECTOR</span>
+        </button>
+      </aside>
+    );
+  }
+
   if (!selectedStep) {
     return (
       <aside className="workflow-inspector empty-inspector">
+        <div className="inspector-collapse-row">
+          {onToggleCollapse && (
+            <button
+              type="button"
+              className="inspector-toggle-btn"
+              onClick={onToggleCollapse}
+              title="Collapse Inspector to expand canvas"
+            >
+              ▸ Collapse
+            </button>
+          )}
+        </div>
         <div className="empty-inspector-icon">
           <svg
             width="28"
@@ -126,9 +159,26 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
   };
 
   const handleSave = () => {
+    let conditionObj = selectedStep.condition;
+    if (formData.conditionField.trim()) {
+      conditionObj = {
+        field: formData.conditionField.trim(),
+        operator: formData.conditionOperator || "eq",
+        value: formData.conditionValue || "true",
+      };
+    }
+
     onUpdateStep({
       ...selectedStep,
-      ...formData
+      name: formData.name,
+      actionType: formData.actionType,
+      target: formData.target,
+      functionName: formData.actionType === "function" ? formData.target : selectedStep.functionName,
+      schema: ["formCreate", "formUpdate", "formDelete"].includes(formData.actionType) ? formData.target : selectedStep.schema,
+      condition: conditionObj,
+      onSuccess: formData.onSuccess,
+      onFailure: formData.onFailure,
+      retryTarget: formData.retryTarget,
     });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2500);
@@ -143,11 +193,24 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
             <p className="inspector-label">STEP INSPECTOR</p>
             <h3>{selectedStep.name}</h3>
           </div>
+          {onToggleCollapse && (
+            <button
+              type="button"
+              className="inspector-toggle-btn"
+              onClick={onToggleCollapse}
+              title="Collapse Inspector to expand canvas"
+            >
+              ▸ Collapse
+            </button>
+          )}
         </div>
 
         <div className="inspector-meta">
           <span className="meta-pill">
-            {(selectedStep.type || selectedStep.actionType || "STEP").toUpperCase()}
+            {(formData.actionType || selectedStep.type || "STEP").toUpperCase()}
+          </span>
+          <span className="meta-step-id">
+            <code>{selectedStep.id || selectedStep.stepId}</code>
           </span>
         </div>
       </div>
@@ -171,7 +234,25 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
         </div>
 
         <div className="inspector-field">
-          <label htmlFor="step-target">Target Capability</label>
+          <label htmlFor="step-action-type">Action Type</label>
+          <select
+            id="step-action-type"
+            name="actionType"
+            value={formData.actionType}
+            onChange={handleChange}
+          >
+            <option value="function">Function / Automation</option>
+            <option value="formCreate">Form Create / Insert Record</option>
+            <option value="formUpdate">Form Update / Status Change</option>
+            <option value="formDelete">Form Delete / Archive</option>
+            <option value="decision">Decision Gate (YES / NO Branch)</option>
+            <option value="retry">Retry Loop</option>
+            <option value="operation">UI Button Operation</option>
+          </select>
+        </div>
+
+        <div className="inspector-field">
+          <label htmlFor="step-target">Target Capability / Schema</label>
           <input
             id="step-target"
             name="target"
@@ -180,13 +261,26 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
             placeholder="Target service or schema"
           />
         </div>
+
+        {formData.actionType === "retry" && (
+          <div className="inspector-field">
+            <label htmlFor="step-retry-target">Retry Target Step ID</label>
+            <input
+              id="step-retry-target"
+              name="retryTarget"
+              value={formData.retryTarget}
+              onChange={handleChange}
+              placeholder="e.g. step-002"
+            />
+          </div>
+        )}
       </div>
 
       {/* Dynamic Input Mapping */}
       <div className="inspector-section">
         <div className="section-heading">
           <span className="section-line" />
-          <span>DYNAMIC INPUT MAPPING (CONTEXT PASSING)</span>
+          <span>DYNAMIC INPUT MAPPING</span>
         </div>
 
         {Object.entries(selectedStep.inputMapping || {}).length > 0 ? (
@@ -225,25 +319,53 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
         )}
       </div>
 
-      {/* Condition Evaluation (if any) */}
-      {selectedStep.condition && (
-        <div className="inspector-section">
-          <div className="section-heading">
-            <span className="section-line" />
-            <span>RUNTIME CONDITION RULE</span>
+      {/* Condition Evaluation */}
+      <div className="inspector-section">
+        <div className="section-heading">
+          <span className="section-line" />
+          <span>RUNTIME CONDITION RULE</span>
+        </div>
+
+        <div className="inspector-condition-inputs">
+          <div className="inspector-field">
+            <label>Field Expression</label>
+            <input
+              name="conditionField"
+              value={formData.conditionField}
+              onChange={handleChange}
+              placeholder="{{trigger.status}}"
+            />
           </div>
 
-          <div className="inspector-condition-card">
-            <label>Evaluated at execution:</label>
-            <code>
-              {typeof selectedStep.condition === "object"
-                ? `${selectedStep.condition.field || "field"} == "${selectedStep.condition.value || "physical"}"`
-                : selectedStep.condition}
-            </code>
-            <small>If true, step executes; if false, step is skipped.</small>
+          <div className="inspector-condition-row">
+            <div className="inspector-field">
+              <label>Operator</label>
+              <select
+                name="conditionOperator"
+                value={formData.conditionOperator}
+                onChange={handleChange}
+              >
+                <option value="eq">== (Equals)</option>
+                <option value="neq">!= (Not Equals)</option>
+                <option value="gt">&gt; (Greater)</option>
+                <option value="gte">&gt;= (Greater or Equal)</option>
+                <option value="lt">&lt; (Less)</option>
+                <option value="lte">&lt;= (Less or Equal)</option>
+              </select>
+            </div>
+
+            <div className="inspector-field">
+              <label>Expected Value</label>
+              <input
+                name="conditionValue"
+                value={formData.conditionValue}
+                onChange={handleChange}
+                placeholder="true or value"
+              />
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Execution Routing Paths */}
       <div className="inspector-section">
@@ -258,7 +380,7 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
           </div>
 
           <div className="path-content">
-            <label htmlFor="on-success">On Success</label>
+            <label htmlFor="on-success">On Success / YES Route</label>
             <input
               id="on-success"
               name="onSuccess"
@@ -275,13 +397,13 @@ function WorkflowInspector({ selectedStep, onUpdateStep }) {
           </div>
 
           <div className="path-content">
-            <label htmlFor="on-failure">On Failure</label>
+            <label htmlFor="on-failure">On Failure / NO Route</label>
             <input
               id="on-failure"
               name="onFailure"
               value={formData.onFailure}
               onChange={handleChange}
-              placeholder="e.g. stop or skip"
+              placeholder="e.g. step-006, skip or abort"
             />
           </div>
         </div>

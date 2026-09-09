@@ -283,29 +283,12 @@ function ProfileModal() {
               >
                 Cancel
               </button>
-              
               <button
                 type="submit"
-                className={`profile-live-save-btn ${isSubmitting ? "is-saving" : ""} ${successMessage ? "is-success" : ""}`}
+                className="primary-btn profile-save-btn"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? (
-                  <>
-                    <span className="live-btn-spinner" />
-                    <span>Saving Profile...</span>
-                  </>
-                ) : successMessage ? (
-                  <>
-                    <span className="live-btn-check">✓</span>
-                    <span>Saved Successfully!</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="live-btn-sparkle">✦</span>
-                    <span>Save Changes</span>
-                    <span className="live-btn-arrow">→</span>
-                  </>
-                )}
+                {isSubmitting ? "Saving..." : "💾 Save Changes"}
               </button>
             </div>
           </div>

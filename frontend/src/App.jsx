@@ -145,7 +145,7 @@ const fallbackRecentWorkflows = [
 ];
 
 function App() {
-  const { isGuest, requireAuth } = useAuth();
+  const { user, isGuest, requireAuth } = useAuth();
   const [showHistory, setShowHistory] = useState(false);
   const [executionHistory, setExecutionHistory] = useState(() => {
     try {
@@ -181,18 +181,10 @@ function App() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const sections = [
-        "home",
-        "builder",
-        "features",
-        "dashboard",
-        "templates",
-        "about",
-        "demo",
-        "help",
-        "contact",
-      ];
-      const scrollPosition = window.scrollY + 140;
+      const sections = isGuest
+        ? ["home", "builder", "templates", "features", "demo", "about", "contact", "help"]
+        : ["dashboard", "builder", "templates", "features", "demo", "about", "contact", "help"];
+      const scrollPosition = window.scrollY + 80;
 
       for (let i = sections.length - 1; i >= 0; i--) {
         const el = document.getElementById(sections[i]);
@@ -209,7 +201,7 @@ function App() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isGuest]);
 
   /*
    * =========================================================
@@ -570,136 +562,37 @@ function App() {
           ===================================================== */}
 
       <main>
-
-        <Hero
-          onOpenBuilder={openBuilder}
-        />
-
-
-        <WorkflowBuilder
-          onHistoryChange={handleHistoryChange}
-          prefillRequirement={activeTemplate}
-          prefillWorkflow={prefillWorkflow}
-          onWorkflowChange={handleWorkflowChange}
-          onNewWorkflowCreated={handleNewWorkflowCreated}
-        />
-
-
-        {/* =================================================
-            FEATURES
-            ================================================= */}
-
-        <section
-          className="features"
-          id="features"
-        >
-          <div className="features-eyebrow">
-            <span className="features-eyebrow-dot" />
-            PLATFORM CAPABILITIES
-          </div>
-
-          <h2>
-            Everything needed to build and manage workflows
-          </h2>
-
-          <div className="feature-grid">
-            <FeatureCard
-              icon="✦"
-              title="AI Workflow Builder"
-              description="Turn natural-language requirements into structured, intelligent workflows."
-              number="0"
-            />
-
-            <FeatureCard
-              icon="◈"
-              title="Visual Workflow Editor"
-              description="Design and refine every workflow step through a clear visual interface."
-              number="0"
-            />
-
-            <FeatureCard
-              icon="✓"
-              title="Smart Validation"
-              description="Catch workflow issues early with intelligent validation before execution."
-              number="0"
-            />
-
-            <FeatureCard
-              icon="⌘"
-              title="Easy Integrations"
-              description="Connect your workflows to services, systems, and business tools with ease."
-              number="0"
-            />
-
-            <FeatureCard
-              icon="🛡"
-              title="Secure & Reliable"
-              description="Build dependable automation with controlled execution and predictable flows."
-              number="0"
-            />
-
-            <FeatureCard
-              icon="↗"
-              title="Analytics & Insights"
-              description="Understand workflow activity and execution outcomes through useful insights."
-              number="0"
-            />
-          </div>
-        </section>
-
         {/* =====================================================
-            TEMPLATES SECTION (Available for preview)
+            TOP SECTION: HERO (Guest) or DASHBOARD (Logged In)
             ===================================================== */}
-        <section className="templates-section" id="templates">
-          <div className="dashboard-header">
-            <div>
-              <p className="tag">TEMPLATES LIBRARY</p>
-              <h2>Pre-built workflow templates</h2>
-              <p className="section-subtitle">Jumpstart your automation with pre-configured schemas and business logic.</p>
-            </div>
-          </div>
-
-          <div className="template-list templates-full-grid">
-            {templates.map((template, index) => (
-              <button
-                key={template.id || template.name || `template-${index}`}
-                type="button"
-                style={{ "--card-index": index }}
-                className="template-card template-action"
-                onClick={() => setPreviewTemplate(template)}
-              >
-                <div className="template-card-header">
-                  <span className="template-category-pill">{template.category}</span>
-                  <span className="template-preview-badge">Preview ➔</span>
-                </div>
-                <h4>{template.name}</h4>
-                <p>{template.description}</p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* =====================================================
-            LIVE DASHBOARD SECTION (Only visible when logged in)
-            ===================================================== */}
-        <section className="dashboard-section" id="dashboard">
-            <div className="dashboard-header">
-              <div>
+        {isGuest ? (
+          <Hero onOpenBuilder={openBuilder} />
+        ) : (
+          <section className="dashboard-section" id="dashboard">
+            <div className="dashboard-welcome-banner">
+              <div className="dashboard-welcome-text">
                 <div className="dashboard-title-row">
                   <p className="tag">LIVE DASHBOARD</p>
-                  <span className={`status-pill ${dashboardMode === "live" ? "status-online" : "status-warning"}`}>
+                  <span className="status-pill status-online">
                     <span className="status-dot"></span>
-                    {dashboardMode === "live" ? "Live data connected" : "Demo data - API unavailable"}
+                    Connected (MongoDB & Bedrock AI)
                   </span>
                   <button className="dashboard-refresh-btn" type="button" onClick={refreshDashboardData} disabled={loadingDashboard}>
                     {loadingDashboard ? "Refreshing..." : "Refresh"}
                   </button>
                 </div>
-                <h2>Workflow health overview</h2>
-                <p className="dashboard-last-updated">
-                  {lastDashboardUpdate ? `Updated ${lastDashboardUpdate.toLocaleTimeString()}` : "Connecting to workflow service..."}
+                <h2>Welcome back, {user?.name || "Architect"}!</h2>
+                <p className="dashboard-welcome-sub">
+                  Here is your live workspace overview, health analytics, and engine performance metrics.
                 </p>
               </div>
+              <button
+                type="button"
+                className="primary-btn dashboard-cta-req-btn"
+                onClick={openBuilder}
+              >
+                ✦ Start Analyzing a New Business Requirement →
+              </button>
             </div>
 
             <div className="stats-grid">
@@ -945,16 +838,132 @@ function App() {
                 </div>
               </div>
             </div>
+          </section>
+        )}
+
+        {/* =====================================================
+            WORKFLOW STUDIO (Workflows Section)
+            ===================================================== */}
+        <WorkflowBuilder
+          onHistoryChange={handleHistoryChange}
+          prefillRequirement={activeTemplate}
+          prefillWorkflow={prefillWorkflow}
+          onWorkflowChange={handleWorkflowChange}
+          onNewWorkflowCreated={handleNewWorkflowCreated}
+        />
+
+        {/* =====================================================
+            TEMPLATES SECTION
+            ===================================================== */}
+        <section className="templates-section" id="templates">
+          <div className="dashboard-header">
+            <div>
+              <p className="tag">TEMPLATES LIBRARY</p>
+              <h2>Pre-built workflow templates</h2>
+              <p className="section-subtitle">Jumpstart your automation with pre-configured schemas and business logic.</p>
+            </div>
+          </div>
+
+          <div className="template-list templates-full-grid">
+            {templates.map((template, index) => (
+              <button
+                key={template.id || template.name || `template-${index}`}
+                type="button"
+                style={{ "--card-index": index }}
+                className="template-card template-action"
+                onClick={() => setPreviewTemplate(template)}
+              >
+                <div className="template-card-header">
+                  <span className="template-category-pill">{template.category}</span>
+                  <span className="template-preview-badge">Preview ➔</span>
+                </div>
+                <h4>{template.name}</h4>
+                <p>{template.description}</p>
+              </button>
+            ))}
+          </div>
         </section>
 
-        <AboutSection />
+        {/* =====================================================
+            FEATURES SECTION
+            ===================================================== */}
+        <section
+          className="features"
+          id="features"
+        >
+          <div className="features-eyebrow">
+            <span className="features-eyebrow-dot" />
+            PLATFORM CAPABILITIES
+          </div>
 
+          <h2>
+            Everything needed to build and manage workflows
+          </h2>
+
+          <div className="feature-grid">
+            <FeatureCard
+              icon="✦"
+              title="AI Workflow Builder"
+              description="Turn natural-language requirements into structured, intelligent workflows."
+              number="0"
+            />
+
+            <FeatureCard
+              icon="◈"
+              title="Visual Workflow Editor"
+              description="Design and refine every workflow step through a clear visual interface."
+              number="0"
+            />
+
+            <FeatureCard
+              icon="✓"
+              title="Smart Validation"
+              description="Catch workflow issues early with intelligent validation before execution."
+              number="0"
+            />
+
+            <FeatureCard
+              icon="⌘"
+              title="Easy Integrations"
+              description="Connect your workflows to services, systems, and business tools with ease."
+              number="0"
+            />
+
+            <FeatureCard
+              icon="🛡"
+              title="Secure & Reliable"
+              description="Build dependable automation with controlled execution and predictable flows."
+              number="0"
+            />
+
+            <FeatureCard
+              icon="↗"
+              title="Analytics & Insights"
+              description="Understand workflow activity and execution outcomes through useful insights."
+              number="0"
+            />
+          </div>
+        </section>
+
+        {/* =====================================================
+            DEMO VIDEO SECTION (Placed after Features)
+            ===================================================== */}
         <DemoVideoSection onOpenBuilder={openBuilder} />
 
-        {/* HELP & FAQS (Only visible when logged in) */}
-        {!isGuest && <HelpSection />}
+        {/* =====================================================
+            ABOUT SECTION
+            ===================================================== */}
+        <AboutSection />
 
+        {/* =====================================================
+            CONTACT SECTION
+            ===================================================== */}
         <ContactSection />
+
+        {/* =====================================================
+            HELP & FAQS SECTION (Support section)
+            ===================================================== */}
+        <HelpSection />
 
         {/* TEMPLATE PREVIEW MODAL */}
         {previewTemplate && (

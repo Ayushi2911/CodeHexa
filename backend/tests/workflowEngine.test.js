@@ -74,4 +74,30 @@ describe("PS11 Core Workflow Engine Unit Tests", () => {
     assert.strictEqual(validation.valid, true);
     assert.strictEqual(validation.errors.length, 0);
   });
+
+  it("should detect decision gates and retry loops when requirement asks for resilient workflow", async () => {
+    const resilientReq = "When order is placed, check stock availability, if available charge payment, if payment fails retry up to 3 times, if rejected cancel order and notify customer.";
+    const workflows = await detectWorkflows("sample-flow", resilientReq, SAMPLE_CONTEXT);
+    assert.ok(workflows.length >= 1);
+    const wf = workflows[0];
+    const decisionStep = wf.steps.find((s) => s.actionType === "decision");
+    const retryStep = wf.steps.find((s) => s.actionType === "retry");
+    assert.ok(decisionStep, "Should contain a decision gate");
+    assert.ok(retryStep, "Should contain a retry loop step");
+    assert.strictEqual(retryStep.retryTarget, "step-002");
+    const validation = validateWorkflow(wf, SAMPLE_CONTEXT);
+    assert.strictEqual(validation.valid, true);
+  });
+
+  it("should keep linear workflow simple when requirement is simple", async () => {
+    const simpleReq = "When an order is placed, notify vendor, create invoice, update inventory, and send confirmation.";
+    const workflows = await detectWorkflows("sample-flow", simpleReq, SAMPLE_CONTEXT);
+    assert.ok(workflows.length >= 1);
+    const wf = workflows[0];
+    assert.strictEqual(wf.steps.length, 4);
+    assert.strictEqual(wf.steps.some((s) => s.actionType === "decision"), false);
+    const validation = validateWorkflow(wf, SAMPLE_CONTEXT);
+    assert.strictEqual(validation.valid, true);
+  });
 });
+

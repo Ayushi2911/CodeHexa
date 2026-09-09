@@ -83,6 +83,10 @@ function WorkflowBuilder({
   const [showAddWorkflowModal, setShowAddWorkflowModal] = useState(false);
   const [addWorkflowPrompt, setAddWorkflowPrompt] = useState("");
 
+  // Canvas Layout & Inspector states
+  const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const generationTimerRef = useRef(null);
 
   const recordWorkflowInHistory = (wf, action = "generated") => {
@@ -459,6 +463,35 @@ function WorkflowBuilder({
     }));
 
     setSelectedStep(updatedStep);
+    setValidationResult(null);
+  };
+
+  const handleAddStep = (newStep) => {
+    if (!workflow) return;
+    const updated = {
+      ...workflow,
+      steps: [...(workflow.steps || []), newStep],
+    };
+    setWorkflow(updated);
+    setSelectedStep(newStep);
+    setValidationResult(null);
+  };
+
+  const handleDeleteStep = (stepId) => {
+    if (!workflow) return;
+    const filtered = (workflow.steps || []).filter((s) => (s.id || s.stepId) !== stepId);
+    const reordered = filtered.map((s, idx) => ({
+      ...s,
+      order: idx + 1,
+    }));
+    const updated = {
+      ...workflow,
+      steps: reordered,
+    };
+    setWorkflow(updated);
+    if (selectedStep && (selectedStep.id === stepId || selectedStep.stepId === stepId)) {
+      setSelectedStep(null);
+    }
     setValidationResult(null);
   };
 
@@ -1238,7 +1271,7 @@ function WorkflowBuilder({
           </div>
 
           {/* WORKFLOW WORKSPACE */}
-          <div className="workflow-workspace">
+          <div className={`workflow-workspace ${isInspectorCollapsed ? "inspector-collapsed" : ""} ${isFullscreen ? "is-fullscreen-workspace" : ""}`}>
             <div className="workflow-preview">
               <div className="studio-canvas-toolbar">
                 <div className="execution-control-row">
@@ -1253,7 +1286,7 @@ function WorkflowBuilder({
                       >
                         <option value="">No failure (Normal run)</option>
                         {workflow.steps?.map((step) => (
-                          <option key={step.id} value={step.id}>
+                          <option key={step.id || step.stepId} value={step.id || step.stepId}>
                             Fail once: {step.name}
                           </option>
                         ))}
@@ -1283,14 +1316,19 @@ function WorkflowBuilder({
               <WorkflowDiagram
                 workflow={workflow}
                 executionState={executionState}
-                selectedStepId={selectedStep?.id}
+                selectedStepId={selectedStep?.id || selectedStep?.stepId}
                 onSelectStep={(stepId) => {
                   const step = workflow.steps?.find(
-                    (s) => s.id === stepId || s.stepId === stepId
+                    (s) => (s.id || s.stepId) === stepId
                   );
                   setSelectedStep(step || null);
                 }}
-                onReorderSteps={handleReorderSteps}
+                onUpdateStep={updateStep}
+                onAddStep={handleAddStep}
+                onDeleteStep={handleDeleteStep}
+                onWorkflowChange={(newWf) => setWorkflow(newWf)}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
               />
             </div>
 
@@ -1298,6 +1336,8 @@ function WorkflowBuilder({
             <WorkflowInspector
               selectedStep={selectedStep}
               onUpdateStep={updateStep}
+              isCollapsed={isInspectorCollapsed}
+              onToggleCollapse={() => setIsInspectorCollapsed((prev) => !prev)}
             />
           </div>
 

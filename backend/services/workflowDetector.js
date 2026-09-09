@@ -127,7 +127,11 @@ function normalizeSteps(rawSteps, idMap = new Map()) {
     let rawAction = String(raw.actionType || raw.type || "").toLowerCase();
     let actionType = "function";
 
-    if (["function", "automated", "api", "custom", "script"].includes(rawAction)) {
+    if (["decision", "condition", "gate", "choice"].includes(rawAction) || /\?$/i.test(name) || /^(is|check if|verify if|if)\b/i.test(name)) {
+      actionType = "decision";
+    } else if (["retry", "loop", "retryaction"].includes(rawAction) || /^retry\b/i.test(name)) {
+      actionType = "retry";
+    } else if (["function", "automated", "api", "custom", "script"].includes(rawAction)) {
       actionType = "function";
     } else if (["formcreate", "create", "insert", "manual", "register", "form"].includes(rawAction)) {
       actionType = "formCreate";
@@ -163,7 +167,6 @@ function normalizeSteps(rawSteps, idMap = new Map()) {
       for (const [k, v] of Object.entries(raw.inputMapping)) {
         if (typeof v === "string") {
           let mappedVal = v.trim();
-          // Convert $trigger.field or $steps.S1.field to {{trigger.field}} or {{step-001.field}}
           if (mappedVal.startsWith("$trigger.")) {
             mappedVal = `{{trigger.${mappedVal.slice(9)}}}`;
           } else if (mappedVal.startsWith("$steps.")) {
@@ -215,13 +218,23 @@ function normalizeSteps(rawSteps, idMap = new Map()) {
           value: match[3],
         };
       }
+    } else if (actionType === "decision") {
+      condition = {
+        field: `{{${i > 0 ? `step-${String(i).padStart(3, "0")}.status` : "trigger.status"}}}`,
+        operator: "eq",
+        value: "true",
+      };
     }
 
-    // Normalize onSuccess & onFailure
+    // Normalize onSuccess / onTrue & onFailure / onFalse
     let onSuccess = null;
-    if (raw.onSuccess && raw.onSuccess !== "END" && raw.onSuccess !== "null") {
+    if (raw.onSuccess === null || raw.onSuccess === "END" || raw.onSuccess === "null" || raw.onSuccess === "complete" || raw.onSuccess === "stop") {
+      onSuccess = null;
+    } else if (raw.onSuccess) {
       onSuccess = idMap.get(String(raw.onSuccess)) || raw.onSuccess;
-    } else if (i < rawSteps.length - 1) {
+    } else if (raw.onTrue && raw.onTrue !== "END" && raw.onTrue !== "null") {
+      onSuccess = idMap.get(String(raw.onTrue)) || raw.onTrue;
+    } else if (raw.onSuccess === undefined && i < rawSteps.length - 1) {
       onSuccess = `step-${String(i + 2).padStart(3, "0")}`;
     }
 
@@ -229,7 +242,15 @@ function normalizeSteps(rawSteps, idMap = new Map()) {
     if (raw.onFailure === "skip") {
       onFailure = "skip";
     } else if (raw.onFailure && raw.onFailure !== "abort" && raw.onFailure !== "END" && raw.onFailure !== raw.stepId) {
-      onFailure = idMap.get(String(raw.onFailure)) || "abort";
+      onFailure = idMap.get(String(raw.onFailure)) || raw.onFailure;
+    } else if (raw.onFalse && raw.onFalse !== "abort" && raw.onFalse !== "END") {
+      onFailure = idMap.get(String(raw.onFalse)) || raw.onFalse;
+    }
+
+    // Normalize retryTarget
+    let retryTarget = null;
+    if (raw.retryTarget) {
+      retryTarget = idMap.get(String(raw.retryTarget)) || raw.retryTarget;
     }
 
     normalized.push({
@@ -245,13 +266,9 @@ function normalizeSteps(rawSteps, idMap = new Map()) {
       condition,
       onSuccess,
       onFailure,
+      retryTarget,
     });
   });
-
-  // Ensure last step onSuccess is null
-  if (normalized.length > 0) {
-    normalized[normalized.length - 1].onSuccess = null;
-  }
 
   return normalized;
 }
@@ -462,10 +479,91 @@ function detectJobWorkflow(text, context) {
 }
 
 function detectOrderWorkflow(text, context) {
+  const lower = String(text || "").toLowerCase();
   const notifyVendor = findFunction(context, ["notifyvendor", "notify vendor"]);
   const confirmation = findFunction(context, ["sendorderconfirmation", "order confirmation"]);
   const invoices = findSchema(context, ["invoice"]);
   const inventory = findButton(context, ["inventory", "stock"]);
+  const payment = findFunction(context, ["payment", "charge", "processpayment"]);
+
+  // If requirement asks for branching / decision / retry logic
+  if (hasAny(lower, ["retry", "fail", "check stock", "verify stock", "stock available", "if available", "if payment fails", "reject", "cancel"])) {
+    const steps = [
+      {
+        name: "Check Stock Availability",
+        actionType: "decision",
+        condition: { field: "{{trigger.stock_available}}", operator: "eq", value: "true" },
+        onSuccess: "step-002",
+        onFailure: "step-006",
+      },
+      {
+        name: "Process Payment",
+        actionType: "function",
+        functionName: catalogName(payment || {}, ["functionName", "name"]) || "ProcessPayment",
+        inputMapping: {
+          orderId: "{{trigger._id}}",
+          amount: "{{trigger.totalAmount}}",
+        },
+        condition: null,
+        onSuccess: "step-003",
+        onFailure: "step-005",
+      },
+      {
+        name: "Create Invoice",
+        actionType: "formCreate",
+        schema: catalogName(invoices || {}, ["schemaName", "name", "schema"]) || "invoices",
+        inputMapping: {
+          order_id: "{{trigger._id}}",
+          amount: "{{trigger.totalAmount}}",
+        },
+        condition: null,
+        onSuccess: "step-004",
+        onFailure: "abort",
+      },
+      {
+        name: "Send Confirmation",
+        actionType: "function",
+        functionName: catalogName(confirmation || {}, ["functionName", "name"]) || "SendOrderConfirmation",
+        inputMapping: {
+          orderId: "{{trigger._id}}",
+          invoiceId: "{{step-003._id}}",
+        },
+        condition: null,
+        onSuccess: null,
+        onFailure: "abort",
+      },
+      {
+        name: "Retry Payment",
+        actionType: "retry",
+        retryTarget: "step-002",
+        inputMapping: {
+          orderId: "{{trigger._id}}",
+          maxRetries: 3,
+        },
+        condition: null,
+        onSuccess: "step-003",
+        onFailure: "step-006",
+      },
+      {
+        name: "Cancel Order & Notify Customer",
+        actionType: "function",
+        functionName: "CancelOrderAndAlert",
+        inputMapping: {
+          orderId: "{{trigger._id}}",
+          reason: "Stock unavailable or payment failed",
+        },
+        condition: null,
+        onSuccess: null,
+        onFailure: "abort",
+      },
+    ];
+
+    return {
+      workflowName: "OrderProcessingWithResilience",
+      description: "Order workflow with stock availability check, payment retries, and cancellation fail-safes.",
+      steps,
+    };
+  }
 
   const steps = [
     {
@@ -541,15 +639,15 @@ function detectAssetWorkflow(text, context) {
       functionName: fn(["validateassetrequest", "validate asset"], "ValidateAssetRequest"),
       inputMapping: { requestId: "{{trigger._id}}" },
       condition: null,
+      onSuccess: "step-002",
       onFailure: "abort",
     },
     {
-      name: "Notify Approver",
-      actionType: "function",
-      functionName: fn(["notifyapprover", "notify approver"], "NotifyApproverOnRequest"),
-      inputMapping: { requestId: "{{trigger._id}}" },
-      condition: null,
-      onFailure: "abort",
+      name: "Is Request Approved?",
+      actionType: "decision",
+      condition: { field: "{{trigger.approver_response}}", operator: "eq", value: "approved" },
+      onSuccess: "step-003",
+      onFailure: "step-005",
     },
     {
       name: "Update Request Status",
@@ -557,6 +655,7 @@ function detectAssetWorkflow(text, context) {
       schema: requests,
       inputMapping: { _id: "{{trigger._id}}", status: "approved" },
       condition: { field: "{{trigger.approver_response}}", operator: "eq", value: "approved" },
+      onSuccess: "step-004",
       onFailure: "abort",
     },
     {
@@ -565,6 +664,7 @@ function detectAssetWorkflow(text, context) {
       schema: assets,
       inputMapping: { request_id: "{{trigger._id}}", asset_type: "{{trigger.requested_asset}}" },
       condition: { field: "{{trigger.approver_response}}", operator: "eq", value: "approved" },
+      onSuccess: null,
       onFailure: "skip",
     },
     {
@@ -573,6 +673,7 @@ function detectAssetWorkflow(text, context) {
       functionName: fn(["notifyrejection", "rejection"], "NotifyRejection"),
       inputMapping: { requestId: "{{trigger._id}}" },
       condition: { field: "{{trigger.approver_response}}", operator: "eq", value: "rejected" },
+      onSuccess: null,
       onFailure: "abort",
     },
   ];
