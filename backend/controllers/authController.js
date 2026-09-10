@@ -531,6 +531,17 @@ exports.getProfile = async (req, res) => {
               gender: user.gender || "",
               country: user.country,
               location: user.location,
+              role: user.role || "Pro Developer",
+              bio: user.bio || "",
+              themePreference: user.themePreference || "dark",
+              notificationPreferences: user.notificationPreferences || {
+                workflowAlerts: true,
+                executionAlerts: true,
+                systemAlerts: true,
+                digestFrequency: "realtime",
+                emailNotifications: true,
+              },
+              storageUsedBytes: user.storageUsedBytes || 0,
               lastConnectedArea: user.lastConnectedArea || `${user.location}, ${user.country}`,
               authProvider: user.authProvider,
               avatar: user.avatar,
@@ -556,6 +567,17 @@ exports.getProfile = async (req, res) => {
           gender: safeUser.gender || "",
           country: safeUser.country,
           location: safeUser.location,
+          role: safeUser.role || "Pro Developer",
+          bio: safeUser.bio || "",
+          themePreference: safeUser.themePreference || "dark",
+          notificationPreferences: safeUser.notificationPreferences || {
+            workflowAlerts: true,
+            executionAlerts: true,
+            systemAlerts: true,
+            digestFrequency: "realtime",
+            emailNotifications: true,
+          },
+          storageUsedBytes: safeUser.storageUsedBytes || 0,
           lastConnectedArea: safeUser.lastConnectedArea || `${safeUser.location}, ${safeUser.country}`,
           authProvider: safeUser.authProvider,
           avatar: safeUser.avatar,
@@ -571,11 +593,24 @@ exports.getProfile = async (req, res) => {
 };
 
 /**
- * Update user profile (name, email, phone, gender, country, location, lastConnectedArea)
+ * Update user profile (name, email, phone, gender, country, location, preferences)
  */
 exports.updateProfile = async (req, res) => {
   try {
-    const { currentEmail, email, name, phone, gender, country, location, lastConnectedArea } = req.body || {};
+    const {
+      currentEmail,
+      email,
+      name,
+      phone,
+      gender,
+      country,
+      location,
+      lastConnectedArea,
+      role,
+      bio,
+      themePreference,
+      notificationPreferences,
+    } = req.body || {};
     const targetEmail = (currentEmail || email || "").trim().toLowerCase();
 
     if (!targetEmail) {
@@ -589,6 +624,12 @@ exports.updateProfile = async (req, res) => {
     if (country) updateFields.country = country.trim();
     if (location) updateFields.location = location.trim();
     if (lastConnectedArea) updateFields.lastConnectedArea = lastConnectedArea.trim();
+    if (role) updateFields.role = role.trim();
+    if (bio !== undefined) updateFields.bio = bio.trim();
+    if (themePreference) updateFields.themePreference = themePreference;
+    if (notificationPreferences && typeof notificationPreferences === "object") {
+      updateFields.notificationPreferences = notificationPreferences;
+    }
 
     // If changing email address, check if new email already exists
     const newEmail = email ? email.trim().toLowerCase() : targetEmail;
@@ -622,6 +663,11 @@ exports.updateProfile = async (req, res) => {
             gender: updated.gender || "",
             country: updated.country,
             location: updated.location,
+            role: updated.role || "Pro Developer",
+            bio: updated.bio || "",
+            themePreference: updated.themePreference || "dark",
+            notificationPreferences: updated.notificationPreferences || {},
+            storageUsedBytes: updated.storageUsedBytes || 0,
             lastConnectedArea: updated.lastConnectedArea || `${updated.location}, ${updated.country}`,
             authProvider: updated.authProvider,
             avatar: updated.avatar,
@@ -649,6 +695,10 @@ exports.updateProfile = async (req, res) => {
       if (country) memUser.country = country.trim();
       if (location) memUser.location = location.trim();
       if (lastConnectedArea) memUser.lastConnectedArea = lastConnectedArea.trim();
+      if (role) memUser.role = role.trim();
+      if (bio !== undefined) memUser.bio = bio.trim();
+      if (themePreference) memUser.themePreference = themePreference;
+      if (notificationPreferences) memUser.notificationPreferences = { ...memUser.notificationPreferences, ...notificationPreferences };
       if (newEmail !== targetEmail) {
         memUser.email = newEmail;
         inMemoryUsers.delete(targetEmail);
@@ -663,6 +713,11 @@ exports.updateProfile = async (req, res) => {
         gender: memUser.gender || "",
         country: memUser.country,
         location: memUser.location,
+        role: memUser.role || "Pro Developer",
+        bio: memUser.bio || "",
+        themePreference: memUser.themePreference || "dark",
+        notificationPreferences: memUser.notificationPreferences || {},
+        storageUsedBytes: memUser.storageUsedBytes || 0,
         lastConnectedArea: memUser.lastConnectedArea || `${memUser.location}, ${memUser.country}`,
         authProvider: memUser.authProvider,
         avatar: memUser.avatar,
@@ -675,6 +730,78 @@ exports.updateProfile = async (req, res) => {
     return res.status(404).json({ ok: false, error: "User profile not found." });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message });
+  }
+};
+
+/**
+ * Get / Update Preferences Endpoint
+ */
+exports.getPreferences = async (req, res) => {
+  try {
+    const { email } = req.query || {};
+    if (!email) return res.status(400).json({ ok: false, error: "Email required" });
+    const targetEmail = email.trim().toLowerCase();
+
+    if (req.app.locals.dbConnected) {
+      const user = await User.findOne({ email: targetEmail });
+      if (user) {
+        return res.json({
+          ok: true,
+          themePreference: user.themePreference || "dark",
+          notificationPreferences: user.notificationPreferences || {},
+        });
+      }
+    }
+
+    const memUser = inMemoryUsers.get(targetEmail);
+    if (memUser) {
+      return res.json({
+        ok: true,
+        themePreference: memUser.themePreference || "dark",
+        notificationPreferences: memUser.notificationPreferences || {},
+      });
+    }
+
+    return res.json({
+      ok: true,
+      themePreference: "dark",
+      notificationPreferences: {
+        workflowAlerts: true,
+        executionAlerts: true,
+        systemAlerts: true,
+        digestFrequency: "realtime",
+        emailNotifications: true,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+};
+
+exports.updatePreferences = async (req, res) => {
+  try {
+    const { email, themePreference, notificationPreferences } = req.body || {};
+    if (!email) return res.status(400).json({ ok: false, error: "Email required" });
+    const targetEmail = email.trim().toLowerCase();
+
+    const updates = {};
+    if (themePreference) updates.themePreference = themePreference;
+    if (notificationPreferences) updates.notificationPreferences = notificationPreferences;
+
+    if (req.app.locals.dbConnected) {
+      await User.findOneAndUpdate({ email: targetEmail }, updates);
+    }
+
+    const memUser = inMemoryUsers.get(targetEmail);
+    if (memUser) {
+      if (themePreference) memUser.themePreference = themePreference;
+      if (notificationPreferences) memUser.notificationPreferences = { ...memUser.notificationPreferences, ...notificationPreferences };
+      inMemoryUsers.set(targetEmail, memUser);
+    }
+
+    return res.json({ ok: true, message: "Preferences updated successfully." });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
   }
 };
 

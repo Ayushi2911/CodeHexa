@@ -148,6 +148,8 @@ export const authApi = {
   googleAuth: (googleData) => api.post("/auth/google", googleData),
   getProfile: (email) => api.get("/auth/profile", { params: { email } }),
   updateProfile: (profileData) => api.put("/auth/profile", profileData),
+  getPreferences: (email) => api.get("/auth/preferences", { params: { email } }),
+  updatePreferences: (data) => api.put("/auth/preferences", data),
   changePassword: (data) => api.post("/auth/change-password", data),
   deleteAccount: (data) => api.post("/auth/delete-account", data),
   getMe: () => api.get("/auth/me"),
@@ -158,6 +160,19 @@ export const authApi = {
     } catch (_) {}
     return Promise.resolve({ ok: true });
   },
+};
+
+/**
+ * ============================================================================
+ * Support & Help Inquiries APIs
+ * ============================================================================
+ */
+export const supportApi = {
+  submitContact: (data) => api.post("/support/contact", data),
+  submitTicket: (data) => api.post("/support/ticket", data),
+  getMessages: (params = {}) => api.get("/support/messages", { params }),
+  getFaqs: () => api.get("/support/faqs"),
+  getDocs: () => api.get("/support/docs"),
 };
 
 /**
@@ -188,12 +203,15 @@ export const formsApi = {
 export const systemApi = {
   getHealth: () => api.get("/health"),
   getInfo: () => api.get("/"),
+  getSystemInfo: () => api.get("/system/info"),
+  getStorageStats: () => api.get("/system/storage"),
 };
 
 export default {
   api,
   workflowApi,
   authApi,
+  supportApi,
   formsApi,
   systemApi,
 };

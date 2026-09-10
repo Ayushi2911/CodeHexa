@@ -27,6 +27,8 @@ router.post("/history", controller.saveHistory);
 router.get("/export", controller.exportWorkflow);
 router.get("/export-all", controller.exportAllWorkflows);
 router.get("/trash", controller.getTrash);
+router.post("/trash/purge", controller.purgeTrash);
+router.delete("/trash/purge", controller.purgeTrash);
 
 // AI & Bedrock Model Tests
 router.post("/llm/test", controller.testLLM);

@@ -14,6 +14,11 @@ const WorkflowRun =
     "../models/WorkflowRun"
   );
 
+const ExecutionHistory =
+  require(
+    "../models/ExecutionHistory"
+  );
+
 const {
   loadProjectContext,
 } = require(
@@ -3129,6 +3134,29 @@ const inMemoryHistory = [
 async function getHistory(req, res) {
   try {
     if (dbReady()) {
+      try {
+        const histRecords = await ExecutionHistory.find().sort({ createdAt: -1 }).limit(50).lean();
+        if (histRecords && histRecords.length > 0) {
+          return res.json({
+            ok: true,
+            data: histRecords.map((r) => ({
+              id: r._id?.toString() || r.id,
+              workflowId: r.workflowId,
+              workflowName: r.workflowName,
+              startedAt: r.startedAt,
+              completedAt: r.completedAt,
+              status: r.status,
+              action: r.action,
+              duration: r.duration,
+              triggerType: r.triggerType,
+              steps: r.steps,
+              fullWorkflow: r.fullWorkflow,
+              createdAt: r.createdAt,
+            })),
+          });
+        }
+      } catch (_) {}
+
       const runs = await WorkflowRun.find().sort({ createdAt: -1 }).limit(30);
       if (runs && runs.length > 0) {
         return res.json({ ok: true, data: runs.map(serializeRun) });
@@ -3158,12 +3186,63 @@ async function saveHistory(req, res) {
       createdAt: new Date().toISOString()
     };
 
+    if (dbReady()) {
+      try {
+        await ExecutionHistory.create({
+          workflowId: formattedRecord.workflowId,
+          workflowName: formattedRecord.workflowName,
+          status: formattedRecord.status,
+          action: formattedRecord.action,
+          startedAt: formattedRecord.startedAt,
+          completedAt: formattedRecord.completedAt,
+          duration: formattedRecord.duration,
+          triggerType: formattedRecord.triggerType,
+          steps: formattedRecord.steps,
+          fullWorkflow: formattedRecord.fullWorkflow,
+        });
+      } catch (dbErr) {
+        console.warn("MongoDB ExecutionHistory.create note:", dbErr.message);
+      }
+    }
+
     inMemoryHistory.unshift(formattedRecord);
     if (inMemoryHistory.length > 50) {
       inMemoryHistory.pop();
     }
 
     return res.status(201).json({ ok: true, data: formattedRecord });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+async function purgeTrash(req, res) {
+  try {
+    const olderThanDays = Number(req.body?.days || req.query?.days || 30);
+    const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
+
+    let purgedCount = 0;
+    if (dbReady()) {
+      const result = await Workflow.deleteMany({
+        isDeleted: true,
+        deletedAt: { $lte: cutoffDate },
+      });
+      purgedCount = result.deletedCount || 0;
+    }
+
+    for (const [id, wf] of inMemoryWorkflows.entries()) {
+      if (wf.isDeleted && wf.deletedAt && new Date(wf.deletedAt) <= cutoffDate) {
+        inMemoryWorkflows.delete(id);
+        purgedCount++;
+      }
+    }
+
+    return res.json({
+      ok: true,
+      message: `Trash purge completed. Removed ${purgedCount} expired workflow(s).`,
+      purgedCount,
+      retentionDays: olderThanDays,
+    });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
   }
@@ -3291,6 +3370,7 @@ module.exports = {
   getTrash,
   restoreWorkflow,
   permanentDelete,
+  purgeTrash,
   testLLM,
   testVLM,
   getTemplates,

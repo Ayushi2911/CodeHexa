@@ -32,6 +32,8 @@ app.use(
 const workflowRoutes = require("./routes/workflowRoutes");
 const formsRoutes = require("./routes/formsRoutes");
 const authRoutes = require("./routes/authRoutes");
+const supportRoutes = require("./routes/supportRoutes");
+const systemRoutes = require("./routes/systemRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/auth", authRoutes);
@@ -40,18 +42,24 @@ app.use("/workflows", workflowRoutes);
 app.use("/workflow", workflowRoutes);
 app.use("/api/forms", formsRoutes);
 app.use("/forms", formsRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/support", supportRoutes);
+app.use("/api/system", systemRoutes);
+app.use("/system", systemRoutes);
 
 app.get(
   "/",
   (req, res) =>
     res.json({
       ok: true,
-      message: "CodeHexa PS11 backend is running",
+      message: "CodeHexa Flow Enterprise Orchestrator backend is running",
       project: "PS11 - Business Workflow Detection & Diagram Generation",
       endpoints: {
         auth: "/api/auth",
         workflows: "/api/workflows",
         forms: "/api/forms",
+        support: "/api/support",
+        system: "/api/system",
         health: "/api/health"
       }
     })
