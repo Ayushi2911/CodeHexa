@@ -1138,46 +1138,38 @@ async function updateStatus(
   }
 }
 
-async function softDelete(
-  req,
-  res
-) {
+async function softDelete(req, res) {
   try {
     const id = req.params.id;
+    const deletedAt = new Date();
 
     if (dbReady()) {
-      const workflow =
-        await Workflow
-          .findByIdAndUpdate(
-            id,
-
-            {
-              isDeleted:
-                true,
-
-              isActive:
-                false,
-
-              status:
-                "archived",
-            },
-
-            {
-              new: true,
-            }
-          );
+      const workflow = await Workflow.findByIdAndUpdate(
+        id,
+        {
+          isDeleted: true,
+          deletedAt: deletedAt,
+          isActive: false,
+          status: "archived",
+        },
+        { new: true }
+      );
 
       if (workflow) {
-        inMemoryWorkflows.delete(id);
+        const memWf = inMemoryWorkflows.get(id);
+        if (memWf) {
+          memWf.isDeleted = true;
+          memWf.deletedAt = deletedAt.toISOString();
+          memWf.isActive = false;
+          memWf.status = "archived";
+        }
         return res.json({
           ok: true,
-
+          message: "Workflow moved to trash (7-day recovery period).",
           data: {
-            workflowId:
-              id,
-
-            deleted:
-              true,
+            workflowId: id,
+            deleted: true,
+            deletedAt: deletedAt.toISOString(),
           },
         });
       }
@@ -1191,50 +1183,260 @@ async function softDelete(
       );
 
     if (!memWf) {
-      return res
-        .status(404)
-        .json({
-          ok: false,
-
-          error: {
-            code:
-              "NOT_FOUND",
-
-            message:
-              "Workflow not found",
-          },
-        });
+      return res.status(404).json({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Workflow not found",
+        },
+      });
     }
 
     memWf.isDeleted = true;
+    memWf.deletedAt = deletedAt.toISOString();
     memWf.isActive = false;
-    inMemoryWorkflows.delete(id);
+    memWf.status = "archived";
+    inMemoryWorkflows.set(id, memWf);
 
     return res.json({
       ok: true,
-
+      message: "Workflow moved to trash (7-day recovery period).",
       data: {
-        workflowId:
-          id,
-
-        deleted:
-          true,
+        workflowId: id,
+        deleted: true,
+        isDeleted: true,
+        deletedAt: deletedAt.toISOString(),
       },
     });
   } catch (error) {
-    return res
-      .status(400)
-      .json({
-        ok: false,
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "DELETE_FAILED",
+        message: error.message,
+      },
+    });
+  }
+}
 
-        error: {
-          code:
-            "DELETE_FAILED",
+async function getTrash(req, res) {
+  try {
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
 
-          message:
-            error.message,
+    if (dbReady()) {
+      // Purge workflows older than 7 days automatically
+      const cutoffDate = new Date(now - SEVEN_DAYS_MS);
+      try {
+        await Workflow.deleteMany({
+          isDeleted: true,
+          deletedAt: { $lt: cutoffDate },
+        });
+      } catch (_) {}
+
+      const docs = await Workflow.find({ isDeleted: true })
+        .sort({ deletedAt: -1 })
+        .lean();
+
+      const workflows = docs.map((doc) => {
+        const serialized = serializeWorkflow(doc);
+        const delTime = doc.deletedAt ? new Date(doc.deletedAt).getTime() : now;
+        const elapsed = now - delTime;
+        const remainingMs = Math.max(0, SEVEN_DAYS_MS - elapsed);
+        const daysRemaining = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+
+        return {
+          ...serialized,
+          deletedAt: doc.deletedAt || new Date().toISOString(),
+          daysRemaining,
+        };
+      });
+
+      return res.json({
+        ok: true,
+        data: {
+          workflows,
+          count: workflows.length,
         },
       });
+    }
+
+    // In-memory fallback
+    const memList = [];
+    for (const [key, wf] of inMemoryWorkflows.entries()) {
+      if (wf.isDeleted) {
+        const delTime = wf.deletedAt ? new Date(wf.deletedAt).getTime() : now;
+        const elapsed = now - delTime;
+        if (elapsed > SEVEN_DAYS_MS) {
+          inMemoryWorkflows.delete(key);
+        } else {
+          const remainingMs = Math.max(0, SEVEN_DAYS_MS - elapsed);
+          const daysRemaining = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+          memList.push({
+            ...serializeWorkflow(wf),
+            deletedAt: wf.deletedAt || new Date().toISOString(),
+            daysRemaining,
+          });
+        }
+      }
+    }
+
+    return res.json({
+      ok: true,
+      data: {
+        workflows: memList,
+        count: memList.length,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: {
+        code: "TRASH_FETCH_FAILED",
+        message: error.message,
+      },
+    });
+  }
+}
+
+async function restoreWorkflow(req, res) {
+  try {
+    const id = req.params.id;
+
+    if (dbReady()) {
+      const doc = await Workflow.findByIdAndUpdate(
+        id,
+        {
+          isDeleted: false,
+          deletedAt: null,
+          isActive: true,
+          status: "draft",
+        },
+        { new: true }
+      );
+
+      if (doc) {
+        const serialized = serializeWorkflow(doc);
+        inMemoryWorkflows.set(id, serialized);
+        return res.json({
+          ok: true,
+          message: "Workflow restored successfully.",
+          data: serialized,
+        });
+      }
+    }
+
+    // In-memory fallback
+    const memWf =
+      inMemoryWorkflows.get(id) ||
+      Array.from(inMemoryWorkflows.values()).find(
+        (w) => w.id === id || w._id === id || w.workflowId === id
+      );
+
+    if (!memWf) {
+      return res.status(404).json({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Deleted workflow not found",
+        },
+      });
+    }
+
+    memWf.isDeleted = false;
+    memWf.deletedAt = null;
+    memWf.isActive = true;
+    memWf.status = "draft";
+    memWf.updatedAt = new Date().toISOString();
+    inMemoryWorkflows.set(id, memWf);
+
+    return res.json({
+      ok: true,
+      message: "Workflow restored successfully.",
+      data: serializeWorkflow(memWf),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "RESTORE_FAILED",
+        message: error.message,
+      },
+    });
+  }
+}
+
+async function permanentDelete(req, res) {
+  try {
+    const id = req.params.id;
+
+    if (dbReady()) {
+      await Workflow.findByIdAndDelete(id);
+      inMemoryWorkflows.delete(id);
+      return res.json({
+        ok: true,
+        message: "Workflow permanently deleted.",
+        data: { workflowId: id, permanent: true },
+      });
+    }
+
+    inMemoryWorkflows.delete(id);
+    for (const [key, wf] of inMemoryWorkflows.entries()) {
+      if (wf.id === id || wf._id === id || wf.workflowId === id) {
+        inMemoryWorkflows.delete(key);
+      }
+    }
+
+    return res.json({
+      ok: true,
+      message: "Workflow permanently deleted.",
+      data: { workflowId: id, permanent: true },
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "PERMANENT_DELETE_FAILED",
+        message: error.message,
+      },
+    });
+  }
+}
+
+async function exportAllWorkflows(req, res) {
+  try {
+    let workflows = [];
+    if (dbReady()) {
+      const docs = await Workflow.find({ isDeleted: false }).lean();
+      workflows = docs.map(serializeWorkflow);
+    } else {
+      workflows = Array.from(inMemoryWorkflows.values())
+        .filter((w) => !w.isDeleted)
+        .map(serializeWorkflow);
+    }
+
+    const payload = {
+      ok: true,
+      data: {
+        exportVersion: "2.4.0",
+        exportedAt: new Date().toISOString(),
+        platform: "CodeHexa Flow",
+        totalWorkflows: workflows.length,
+        workflows,
+        history: inMemoryHistory || [],
+      },
+    };
+
+    if (typeof res.setHeader === "function") {
+      res.setHeader("Content-Disposition", `attachment; filename=codehexa_workflows_export_${Date.now()}.json`);
+      res.setHeader("Content-Type", "application/json");
+    }
+    return res.json(payload);
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message,
+    });
   }
 }
 
@@ -3084,6 +3286,11 @@ module.exports = {
   applyAgentEdit,
   getStats,
   exportWorkflow,
+  exportAll: exportAllWorkflows,
+  exportAllWorkflows,
+  getTrash,
+  restoreWorkflow,
+  permanentDelete,
   testLLM,
   testVLM,
   getTemplates,

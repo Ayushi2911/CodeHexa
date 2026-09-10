@@ -219,4 +219,60 @@ describe("PS11 API Integration Tests", () => {
     const found = getRes.body.data.some((item) => item.workflowName === "Order Processing Unit Test");
     assert.ok(found);
   });
+
+  it("should soft delete workflow (move to trash) via softDelete", async () => {
+    const req = { params: { id: "demo-3" } };
+    const res = createMockRes();
+
+    await workflowController.softDelete(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(res.body.data.isDeleted, true);
+    assert.ok(res.body.data.deletedAt);
+  });
+
+  it("should list trash workflows with remaining days countdown via getTrash", async () => {
+    const req = {};
+    const res = createMockRes();
+
+    await workflowController.getTrash(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data.workflows));
+    const item = res.body.data.workflows.find((w) => w.id === "demo-3");
+    assert.ok(item);
+    assert.strictEqual(item.daysRemaining, 7);
+  });
+
+  it("should restore workflow from trash via restoreWorkflow", async () => {
+    const req = { params: { id: "demo-3" } };
+    const res = createMockRes();
+
+    await workflowController.restoreWorkflow(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(res.body.data.isDeleted, false);
+    assert.strictEqual(res.body.data.deletedAt, null);
+  });
+
+  it("should permanently delete workflow via permanentDelete", async () => {
+    const req = { params: { id: "demo-4" } };
+    const res = createMockRes();
+
+    await workflowController.permanentDelete(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+  });
+
+  it("should export all active workflow data via exportAll", async () => {
+    const req = {};
+    const res = createMockRes();
+
+    await workflowController.exportAll(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data.workflows));
+    assert.ok(res.body.data.exportedAt);
+    assert.strictEqual(res.body.data.platform, "CodeHexa Flow");
+  });
 });

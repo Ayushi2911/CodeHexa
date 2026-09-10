@@ -4,25 +4,28 @@ function Navbar({
   onOpenBuilder,
   onOpenHistory,
   activeSection = "home",
-  theme = "dark",
-  onToggleTheme,
 }) {
-  const { user, isGuest, openLogin, openRegister, logout, openProfileModal } = useAuth();
+  const { user, isGuest, openLogin, openRegister, logout, openProfileModal, openSettings, activeStandalonePage, closeStandalonePage } = useAuth();
 
   const scrollTo = (e, targetId) => {
     e.preventDefault();
-    const el = document.getElementById(targetId);
-    if (el) {
-      const navOffset = 62;
-      const elementPosition = el.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - navOffset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      });
-      window.history.pushState(null, "", `#${targetId}`);
+    if (activeStandalonePage) {
+      closeStandalonePage();
     }
+    setTimeout(() => {
+      const el = document.getElementById(targetId);
+      if (el) {
+        const navOffset = 62;
+        const elementPosition = el.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - navOffset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth",
+        });
+        window.history.pushState(null, "", `#${targetId}`);
+      }
+    }, activeStandalonePage ? 50 : 0);
   };
 
   const getInitials = (name) => {
@@ -89,16 +92,18 @@ function Navbar({
             Templates
           </a>
 
-          {/* 5. Features */}
-          <a
-            href="#features"
-            onClick={(e) => scrollTo(e, "features")}
-            className={`nav-link ${activeSection === "features" ? "active" : ""}`}
-          >
-            Features
-          </a>
+          {/* 5. Features (Guest Only - Logged in users have focused workspace) */}
+          {isGuest && (
+            <a
+              href="#features"
+              onClick={(e) => scrollTo(e, "features")}
+              className={`nav-link ${activeSection === "features" ? "active" : ""}`}
+            >
+              Features
+            </a>
+          )}
 
-          {/* 6. Demo (Placed after Features) */}
+          {/* 5 (Logged in) or 6 (Guest). Demo */}
           <a
             href="#demo"
             onClick={(e) => scrollTo(e, "demo")}
@@ -107,49 +112,41 @@ function Navbar({
             Demo
           </a>
 
-          {/* 7. About */}
-          <a
-            href="#about"
-            onClick={(e) => scrollTo(e, "about")}
-            className={`nav-link ${activeSection === "about" ? "active" : ""}`}
-          >
-            About
-          </a>
+          {/* Guest-only Informational Pages (Logged-in users access these via Settings) */}
+          {isGuest && (
+            <>
+              {/* 7. About */}
+              <a
+                href="#about"
+                onClick={(e) => scrollTo(e, "about")}
+                className={`nav-link ${activeSection === "about" ? "active" : ""}`}
+              >
+                About
+              </a>
 
-          {/* 8. Contact */}
-          <a
-            href="#contact"
-            onClick={(e) => scrollTo(e, "contact")}
-            className={`nav-link ${activeSection === "contact" ? "active" : ""}`}
-          >
-            Contact
-          </a>
+              {/* 8. Contact */}
+              <a
+                href="#contact"
+                onClick={(e) => scrollTo(e, "contact")}
+                className={`nav-link ${activeSection === "contact" ? "active" : ""}`}
+              >
+                Contact
+              </a>
 
-          {/* 9. Help */}
-          <a
-            href="#help"
-            onClick={(e) => scrollTo(e, "help")}
-            className={`nav-link ${activeSection === "help" ? "active" : ""}`}
-          >
-            Help
-          </a>
+              {/* 9. Help */}
+              <a
+                href="#help"
+                onClick={(e) => scrollTo(e, "help")}
+                className={`nav-link ${activeSection === "help" ? "active" : ""}`}
+              >
+                Help
+              </a>
+            </>
+          )}
         </div>
       </div>
 
       <div className="navbar-actions">
-        {/* Theme Toggle */}
-        <button
-          className="theme-btn"
-          onClick={onToggleTheme}
-          type="button"
-          aria-label="Toggle Theme"
-          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
-        >
-          <span className="theme-icon">
-            {theme === "dark" ? "☀️" : "🌙"}
-          </span>
-        </button>
-
         {/* Guest Mode vs Logged In Actions */}
         {isGuest ? (
           <div className="nav-auth-group">
@@ -174,8 +171,18 @@ function Navbar({
         ) : (
           <div className="nav-user-group">
             <button
+              className="nav-settings-btn"
+              onClick={() => openSettings("appearance")}
+              type="button"
+              title="Open Settings (Appearance, Account, Data & Storage, Notifications, Support)"
+            >
+              <span className="settings-btn-icon">⚙️</span>
+              <span className="settings-btn-text">Settings</span>
+            </button>
+
+            <button
               className="nav-user-profile-chip"
-              onClick={openProfileModal}
+              onClick={() => openSettings("account")}
               type="button"
               title={`Click to manage profile: ${user?.name || "User"} (${user?.email || ""})`}
             >

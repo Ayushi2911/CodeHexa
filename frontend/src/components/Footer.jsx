@@ -1,4 +1,4 @@
-function Footer({ onOpenBuilder, onOpenHistory, theme, onToggleTheme }) {
+function Footer({ onOpenBuilder, onOpenHistory }) {
   return (
     <footer className="footer">
       <div className="footer-top">
@@ -53,13 +53,6 @@ function Footer({ onOpenBuilder, onOpenHistory, theme, onToggleTheme }) {
         <p>© {new Date().getFullYear()} CodeHexa Flow. All rights reserved.</p>
 
         <div className="footer-actions">
-          <button
-            type="button"
-            className="footer-theme-toggle"
-            onClick={onToggleTheme}
-          >
-            {theme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode"}
-          </button>
           <a href="#home" className="back-to-top">
             Back to Top ↑
           </a>

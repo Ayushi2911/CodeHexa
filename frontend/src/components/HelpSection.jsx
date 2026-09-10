@@ -1,7 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-function HelpSection() {
+function HelpSection({ focusSection = null }) {
   const [openFaq, setOpenFaq] = useState(0);
+
+  useEffect(() => {
+    if (focusSection === "faq") {
+      const el = document.getElementById("faq");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }, [focusSection]);
 
   const faqs = [
     {
@@ -74,7 +83,7 @@ function HelpSection() {
         ))}
       </div>
 
-      <div className="faq-container">
+      <div className="faq-container" id="faq">
         <div className="faq-header-row">
           <h3>Frequently Asked Questions</h3>
           <span>Click any question to view the full explanation</span>

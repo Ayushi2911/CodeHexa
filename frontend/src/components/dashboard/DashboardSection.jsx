@@ -18,6 +18,7 @@ function DashboardSection({
   onOpenWorkflowInStudio,
   onOpenHistory,
   setSelectedRecentWorkflow,
+  onRequestDelete,
 }) {
   // activeDetailTab: null (overview) | "total" | "active" | "drafts" | "confidence"
   const [activeDetailTab, setActiveDetailTab] = useState(null);
@@ -260,6 +261,16 @@ function DashboardSection({
                 >
                   ▶ Inspect Traces
                 </button>
+                {onRequestDelete && (
+                  <button
+                    type="button"
+                    className="detail-action-delete"
+                    onClick={() => onRequestDelete(wf)}
+                    title="Delete workflow"
+                  >
+                    🗑️ Delete
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -424,6 +435,16 @@ function DashboardSection({
                 >
                   ▶ Trace Execution
                 </button>
+                {onRequestDelete && (
+                  <button
+                    type="button"
+                    className="detail-action-delete"
+                    onClick={() => onRequestDelete(wf)}
+                    title="Delete workflow"
+                  >
+                    🗑️ Delete
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -594,6 +615,16 @@ function DashboardSection({
                 >
                   👁 Preview Flow
                 </button>
+                {onRequestDelete && (
+                  <button
+                    type="button"
+                    className="detail-action-delete"
+                    onClick={() => onRequestDelete(wf)}
+                    title="Delete workflow"
+                  >
+                    🗑️ Delete
+                  </button>
+                )}
               </div>
             </div>
           ))

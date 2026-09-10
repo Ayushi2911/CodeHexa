@@ -186,6 +186,12 @@ const workflowSchema = new mongoose.Schema(
       index: true,
     },
 
+    deletedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
     version: {
       type: Number,
       default: 1,

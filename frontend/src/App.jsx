@@ -11,6 +11,8 @@ import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
 import AuthModal from "./components/auth/AuthModal";
 import ProfileModal from "./components/auth/ProfileModal";
+import SettingsModal from "./components/settings/SettingsModal";
+import WorkflowDeleteModal from "./components/workflow/WorkflowDeleteModal";
 import { useAuth } from "./context/AuthContext";
 import { workflowApi } from "./services/api";
 import DashboardSection from "./components/dashboard/DashboardSection";
@@ -145,7 +147,7 @@ const fallbackRecentWorkflows = [
 ];
 
 function App() {
-  const { user, isGuest, requireAuth } = useAuth();
+  const { user, isGuest, requireAuth, activeStandalonePage, closeStandalonePage, openSettings } = useAuth();
   const [showHistory, setShowHistory] = useState(false);
   const [executionHistory, setExecutionHistory] = useState(() => {
     try {
@@ -169,21 +171,101 @@ function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("codehexa_theme") || "dark";
   });
+  const [workflowToDelete, setWorkflowToDelete] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
+    const applyTheme = (currentTheme) => {
+      if (currentTheme === "system") {
+        const isSystemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", isSystemDark ? "dark" : "light");
+      } else {
+        document.documentElement.setAttribute("data-theme", currentTheme);
+      }
+    };
+
+    applyTheme(theme);
     localStorage.setItem("codehexa_theme", theme);
+
+    if (theme === "system" && window.matchMedia) {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = (e) => {
+        document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      };
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  const handleRequestDelete = (wf) => {
+    if (!wf) return;
+    setWorkflowToDelete(wf);
+    setShowDeleteModal(true);
+  };
+
+  const handleSoftDelete = async (wf) => {
+    const target = wf || workflowToDelete;
+    if (!target) return;
+    const wfId = target.id || target._id;
+    try {
+      if (wfId && !String(wfId).startsWith("local-") && !String(wfId).startsWith("demo-")) {
+        await workflowApi.deleteWorkflow(wfId);
+      }
+    } catch (err) {
+      console.warn("Soft delete API call:", err);
+    }
+    setRecentWorkflows((prev) => prev.filter((w) => (w.id || w._id) !== wfId));
+    setDashboardStats((prev) => ({
+      ...prev,
+      totalWorkflows: Math.max(0, (prev.totalWorkflows || 1) - 1),
+      activeWorkflows: target.status === "active" ? Math.max(0, (prev.activeWorkflows || 1) - 1) : prev.activeWorkflows,
+      draftWorkflows: target.status === "draft" ? Math.max(0, (prev.draftWorkflows || 1) - 1) : prev.draftWorkflows,
+    }));
+    setShowDeleteModal(false);
+    setWorkflowToDelete(null);
+  };
+
+  const handlePermanentDelete = async (wf) => {
+    const target = wf || workflowToDelete;
+    if (!target) return;
+    const wfId = target.id || target._id;
+    try {
+      if (wfId && !String(wfId).startsWith("local-") && !String(wfId).startsWith("demo-")) {
+        await workflowApi.permanentDelete(wfId);
+      }
+    } catch (err) {
+      console.warn("Permanent delete API call:", err);
+    }
+    setRecentWorkflows((prev) => prev.filter((w) => (w.id || w._id) !== wfId));
+    setDashboardStats((prev) => ({
+      ...prev,
+      totalWorkflows: Math.max(0, (prev.totalWorkflows || 1) - 1),
+      activeWorkflows: target.status === "active" ? Math.max(0, (prev.activeWorkflows || 1) - 1) : prev.activeWorkflows,
+      draftWorkflows: target.status === "draft" ? Math.max(0, (prev.draftWorkflows || 1) - 1) : prev.draftWorkflows,
+    }));
+    setShowDeleteModal(false);
+    setWorkflowToDelete(null);
+  };
+
+  const handleExportAndDelete = async (wf) => {
+    const target = wf || workflowToDelete;
+    if (!target) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(target, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `${(target.name || "workflow").toLowerCase().replace(/\s+/g, "_")}_backup.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+
+    await handleSoftDelete(target);
   };
 
   useEffect(() => {
     const handleScroll = () => {
       const sections = isGuest
         ? ["home", "builder", "templates", "features", "demo", "about", "contact", "help"]
-        : ["dashboard", "builder", "templates", "features", "demo", "about", "contact", "help"];
+        : ["dashboard", "builder", "templates", "features", "demo"];
       const scrollPosition = window.scrollY + 80;
 
       for (let i = sections.length - 1; i >= 0; i--) {
@@ -552,8 +634,6 @@ function App() {
         activeSection={activeSection}
         onOpenBuilder={openBuilder}
         onOpenHistory={openHistory}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
 
 
@@ -563,150 +643,217 @@ function App() {
 
       <main>
         {/* =====================================================
-            TOP SECTION: HERO (Guest) or DASHBOARD (Logged In)
+            STANDALONE PAGE VIEW (LOGGED-IN ONLY - OPENED VIA SETTINGS)
             ===================================================== */}
-        {isGuest ? (
-          <Hero onOpenBuilder={openBuilder} />
-        ) : (
-          <DashboardSection
-            user={user}
-            dashboardStats={dashboardStats}
-            recentWorkflows={recentWorkflows}
-            templates={templates}
-            executionHistory={executionHistory}
-            dashboardMode={dashboardMode}
-            loadingDashboard={loadingDashboard}
-            refreshDashboardData={refreshDashboardData}
-            onOpenBuilder={openBuilder}
-            onOpenWorkflowInStudio={handleOpenWorkflowInStudio}
-            onOpenHistory={openHistory}
-            setSelectedRecentWorkflow={setSelectedRecentWorkflow}
-          />
-        )}
+        {!isGuest && activeStandalonePage ? (
+          <div className="standalone-page-view">
+            <div className="standalone-nav-bar">
+              <div className="standalone-nav-left">
+                <button
+                  type="button"
+                  className="standalone-back-btn"
+                  onClick={() => {
+                    const returnTab = activeStandalonePage === "about" ? "about" : "support";
+                    closeStandalonePage();
+                    openSettings(returnTab);
+                  }}
+                  title="Return to Settings"
+                >
+                  <span className="back-arrow">←</span>
+                  <span>Back to Settings</span>
+                </button>
+                <div className="standalone-breadcrumb">
+                  <span>Settings</span>
+                  <span className="breadcrumb-sep">/</span>
+                  <span className="current-tag">
+                    {activeStandalonePage === "about" && "About CodeHexa Flow"}
+                    {activeStandalonePage === "help" && "Help Center & Documentation"}
+                    {activeStandalonePage === "faq" && "Frequently Asked Questions (FAQ)"}
+                    {activeStandalonePage === "contact" && "Contact Us & Official Channels"}
+                    {activeStandalonePage === "support" && "Contact Support / Report a Problem"}
+                    {activeStandalonePage === "help-and-support" && "Help & Support Hub"}
+                  </span>
+                </div>
+              </div>
 
-        {/* =====================================================
-            WORKFLOW STUDIO (Workflows Section)
-            ===================================================== */}
-        <WorkflowBuilder
-          onHistoryChange={handleHistoryChange}
-          prefillRequirement={activeTemplate}
-          prefillWorkflow={prefillWorkflow}
-          onWorkflowChange={handleWorkflowChange}
-          onNewWorkflowCreated={handleNewWorkflowCreated}
-        />
+              <div className="standalone-nav-right">
+                <button
+                  type="button"
+                  className="standalone-close-btn"
+                  onClick={closeStandalonePage}
+                  title="Close and return to workspace"
+                >
+                  ✕ Close to Dashboard
+                </button>
+              </div>
+            </div>
 
-        {/* =====================================================
-            TEMPLATES SECTION
-            ===================================================== */}
-        <section className="templates-section" id="templates">
-          <div className="dashboard-header">
-            <div>
-              <p className="tag">TEMPLATES LIBRARY</p>
-              <h2>Pre-built workflow templates</h2>
-              <p className="section-subtitle">Jumpstart your automation with pre-configured schemas and business logic.</p>
+            <div className="standalone-content-card">
+              {activeStandalonePage === "about" && <AboutSection />}
+              {activeStandalonePage === "help" && <HelpSection />}
+              {activeStandalonePage === "faq" && <HelpSection focusSection="faq" />}
+              {activeStandalonePage === "contact" && <ContactSection />}
+              {activeStandalonePage === "support" && <ContactSection focusSection="form" />}
+              {activeStandalonePage === "help-and-support" && (
+                <>
+                  <HelpSection />
+                  <ContactSection />
+                </>
+              )}
             </div>
           </div>
+        ) : (
+          <>
+            {/* =====================================================
+                TOP SECTION: HERO (Guest) or DASHBOARD (Logged In)
+                ===================================================== */}
+            {isGuest ? (
+              <Hero onOpenBuilder={openBuilder} />
+            ) : (
+              <DashboardSection
+                user={user}
+                dashboardStats={dashboardStats}
+                recentWorkflows={recentWorkflows}
+                templates={templates}
+                executionHistory={executionHistory}
+                dashboardMode={dashboardMode}
+                loadingDashboard={loadingDashboard}
+                refreshDashboardData={refreshDashboardData}
+                onOpenBuilder={openBuilder}
+                onOpenWorkflowInStudio={handleOpenWorkflowInStudio}
+                onOpenHistory={openHistory}
+                setSelectedRecentWorkflow={setSelectedRecentWorkflow}
+                onRequestDelete={handleRequestDelete}
+              />
+            )}
 
-          <div className="template-list templates-full-grid">
-            {templates.map((template, index) => (
-              <button
-                key={template.id || template.name || `template-${index}`}
-                type="button"
-                style={{ "--card-index": index }}
-                className="template-card template-action"
-                onClick={() => setPreviewTemplate(template)}
-              >
-                <div className="template-card-header">
-                  <span className="template-category-pill">{template.category}</span>
-                  <span className="template-preview-badge">Preview ➔</span>
+            {/* =====================================================
+                WORKFLOW STUDIO (Workflows Section)
+                ===================================================== */}
+            <WorkflowBuilder
+              onHistoryChange={handleHistoryChange}
+              prefillRequirement={activeTemplate}
+              prefillWorkflow={prefillWorkflow}
+              onWorkflowChange={handleWorkflowChange}
+              onNewWorkflowCreated={handleNewWorkflowCreated}
+              onRequestDelete={handleRequestDelete}
+            />
+
+            {/* =====================================================
+                TEMPLATES SECTION
+                ===================================================== */}
+            <section className="templates-section" id="templates">
+              <div className="dashboard-header">
+                <div>
+                  <p className="tag">TEMPLATES LIBRARY</p>
+                  <h2>Pre-built workflow templates</h2>
+                  <p className="section-subtitle">Jumpstart your automation with pre-configured schemas and business logic.</p>
                 </div>
-                <h4>{template.name}</h4>
-                <p>{template.description}</p>
-              </button>
-            ))}
-          </div>
-        </section>
+              </div>
 
-        {/* =====================================================
-            FEATURES SECTION
-            ===================================================== */}
-        <section
-          className="features"
-          id="features"
-        >
-          <div className="features-eyebrow">
-            <span className="features-eyebrow-dot" />
-            PLATFORM CAPABILITIES
-          </div>
+              <div className="template-list templates-full-grid">
+                {templates.map((template, index) => (
+                  <button
+                    key={template.id || template.name || `template-${index}`}
+                    type="button"
+                    style={{ "--card-index": index }}
+                    className="template-card template-action"
+                    onClick={() => setPreviewTemplate(template)}
+                  >
+                    <div className="template-card-header">
+                      <span className="template-category-pill">{template.category}</span>
+                      <span className="template-preview-badge">Preview ➔</span>
+                    </div>
+                    <h4>{template.name}</h4>
+                    <p>{template.description}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
 
-          <h2>
-            Everything needed to build and manage workflows
-          </h2>
+            {/* =====================================================
+                FEATURES SECTION
+                ===================================================== */}
+            <section
+              className="features"
+              id="features"
+            >
+              <div className="features-eyebrow">
+                <span className="features-eyebrow-dot" />
+                PLATFORM CAPABILITIES
+              </div>
 
-          <div className="feature-grid">
-            <FeatureCard
-              icon="✦"
-              title="AI Workflow Builder"
-              description="Turn natural-language requirements into structured, intelligent workflows."
-              number="0"
-            />
+              <h2>
+                Everything needed to build and manage workflows
+              </h2>
 
-            <FeatureCard
-              icon="◈"
-              title="Visual Workflow Editor"
-              description="Design and refine every workflow step through a clear visual interface."
-              number="0"
-            />
+              <div className="feature-grid">
+                <FeatureCard
+                  icon="✦"
+                  title="AI Workflow Builder"
+                  description="Turn natural-language requirements into structured, intelligent workflows."
+                  number="0"
+                />
 
-            <FeatureCard
-              icon="✓"
-              title="Smart Validation"
-              description="Catch workflow issues early with intelligent validation before execution."
-              number="0"
-            />
+                <FeatureCard
+                  icon="◈"
+                  title="Visual Workflow Editor"
+                  description="Design and refine every workflow step through a clear visual interface."
+                  number="0"
+                />
 
-            <FeatureCard
-              icon="⌘"
-              title="Easy Integrations"
-              description="Connect your workflows to services, systems, and business tools with ease."
-              number="0"
-            />
+                <FeatureCard
+                  icon="✓"
+                  title="Smart Validation"
+                  description="Catch workflow issues early with intelligent validation before execution."
+                  number="0"
+                />
 
-            <FeatureCard
-              icon="🛡"
-              title="Secure & Reliable"
-              description="Build dependable automation with controlled execution and predictable flows."
-              number="0"
-            />
+                <FeatureCard
+                  icon="⌘"
+                  title="Easy Integrations"
+                  description="Connect your workflows to services, systems, and business tools with ease."
+                  number="0"
+                />
 
-            <FeatureCard
-              icon="↗"
-              title="Analytics & Insights"
-              description="Understand workflow activity and execution outcomes through useful insights."
-              number="0"
-            />
-          </div>
-        </section>
+                <FeatureCard
+                  icon="🛡"
+                  title="Secure & Reliable"
+                  description="Build dependable automation with controlled execution and predictable flows."
+                  number="0"
+                />
 
-        {/* =====================================================
-            DEMO VIDEO SECTION (Placed after Features)
-            ===================================================== */}
-        <DemoVideoSection onOpenBuilder={openBuilder} />
+                <FeatureCard
+                  icon="↗"
+                  title="Analytics & Insights"
+                  description="Understand workflow activity and execution outcomes through useful insights."
+                  number="0"
+                />
+              </div>
+            </section>
 
-        {/* =====================================================
-            ABOUT SECTION
-            ===================================================== */}
-        <AboutSection />
+            {/* =====================================================
+                DEMO VIDEO SECTION (Placed after Features)
+                ===================================================== */}
+            <DemoVideoSection onOpenBuilder={openBuilder} />
 
-        {/* =====================================================
-            CONTACT SECTION
-            ===================================================== */}
-        <ContactSection />
+            {/* =====================================================
+                INFORMATIONAL SECTIONS (GUEST MODE ONLY)
+                ===================================================== */}
+            {isGuest && (
+              <>
+                {/* ABOUT SECTION */}
+                <AboutSection />
 
-        {/* =====================================================
-            HELP & FAQS SECTION (Support section)
-            ===================================================== */}
-        <HelpSection />
+                {/* CONTACT SECTION */}
+                <ContactSection />
+
+                {/* HELP & FAQS SECTION (Support section) */}
+                <HelpSection />
+              </>
+            )}
+          </>
+        )}
 
         {/* TEMPLATE PREVIEW MODAL */}
         {previewTemplate && (
@@ -898,6 +1045,18 @@ function App() {
 
               <div className="template-modal-actions">
                 <button
+                  className="template-modal-delete-btn"
+                  onClick={() => {
+                    const selected = selectedRecentWorkflow;
+                    setSelectedRecentWorkflow(null);
+                    handleRequestDelete(selected);
+                  }}
+                  type="button"
+                  title="Delete this workflow"
+                >
+                  🗑️ Delete
+                </button>
+                <button
                   className="template-modal-cancel-btn"
                   onClick={() => setSelectedRecentWorkflow(null)}
                   type="button"
@@ -931,8 +1090,6 @@ function App() {
       <Footer
         onOpenBuilder={openBuilder}
         onOpenHistory={openHistory}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
 
 
@@ -1132,6 +1289,24 @@ function App() {
       {/* AUTHENTICATION & PROFILE MODALS */}
       <AuthModal />
       <ProfileModal />
+      <SettingsModal
+        currentTheme={theme}
+        onThemeChange={setTheme}
+        onWorkflowRestored={refreshDashboardData}
+        onOpenBuilder={openBuilder}
+        onOpenHistory={openHistory}
+      />
+      <WorkflowDeleteModal
+        isOpen={showDeleteModal}
+        workflow={workflowToDelete}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setWorkflowToDelete(null);
+        }}
+        onSoftDelete={handleSoftDelete}
+        onPermanentDelete={handlePermanentDelete}
+        onExportAndDelete={handleExportAndDelete}
+      />
     </div>
   );
 }

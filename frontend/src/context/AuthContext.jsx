@@ -146,6 +146,9 @@ export function AuthProvider({ children }) {
   };
 
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsActiveTab, setSettingsActiveTab] = useState("appearance");
+  const [activeStandalonePage, setActiveStandalonePage] = useState(null); // null | "about" | "help" | "faq" | "contact" | "support" | "help-and-support"
 
   const openProfileModal = () => {
     setShowProfileModal(true);
@@ -153,6 +156,27 @@ export function AuthProvider({ children }) {
 
   const closeProfileModal = () => {
     setShowProfileModal(false);
+  };
+
+  const openSettings = (tabName = "appearance") => {
+    setActiveStandalonePage(null);
+    setSettingsActiveTab(tabName);
+    setShowSettingsModal(true);
+  };
+
+  const closeSettings = () => {
+    setShowSettingsModal(false);
+  };
+
+  const openStandalonePage = (pageName) => {
+    setShowSettingsModal(false);
+    setShowProfileModal(false);
+    setActiveStandalonePage(pageName);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeStandalonePage = () => {
+    setActiveStandalonePage(null);
   };
 
   /**
@@ -178,11 +202,54 @@ export function AuthProvider({ children }) {
   };
 
   /**
+   * Change user password
+   */
+  const changePassword = async ({ currentPassword, newPassword }) => {
+    try {
+      const response = await authApi.changePassword({
+        email: user?.email,
+        currentPassword,
+        newPassword,
+      });
+
+      if (response.data?.ok) {
+        return { success: true, message: response.data.message || "Password updated successfully!" };
+      }
+      return { success: false, error: response.data?.error || "Failed to update password." };
+    } catch (err) {
+      const serverError = err.response?.data?.error || err.message || "Failed to update password.";
+      return { success: false, error: serverError };
+    }
+  };
+
+  /**
+   * Delete user account
+   */
+  const deleteAccount = async () => {
+    try {
+      const response = await authApi.deleteAccount({
+        email: user?.email,
+      });
+
+      if (response.data?.ok) {
+        logout();
+        return { success: true, message: "Account deleted successfully." };
+      }
+      return { success: false, error: response.data?.error || "Failed to delete account." };
+    } catch (err) {
+      const serverError = err.response?.data?.error || err.message || "Failed to delete account.";
+      return { success: false, error: serverError };
+    }
+  };
+
+  /**
    * Logout (Revert to Guest Mode)
    */
   const logout = () => {
     setUser(null);
     setShowProfileModal(false);
+    setShowSettingsModal(false);
+    setActiveStandalonePage(null);
     localStorage.removeItem("codehexa_user");
     localStorage.removeItem("codehexa_token");
   };
@@ -192,6 +259,9 @@ export function AuthProvider({ children }) {
     isGuest: !user,
     showAuthModal,
     showProfileModal,
+    showSettingsModal,
+    settingsActiveTab,
+    activeStandalonePage,
     authMode,
     authMessage,
     setAuthMode,
@@ -204,7 +274,14 @@ export function AuthProvider({ children }) {
     closeAuthModal,
     openProfileModal,
     closeProfileModal,
+    openSettings,
+    closeSettings,
+    openStandalonePage,
+    closeStandalonePage,
+    setSettingsActiveTab,
     updateUserProfile,
+    changePassword,
+    deleteAccount,
     requireAuth,
   };
 

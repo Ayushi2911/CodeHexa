@@ -74,10 +74,15 @@ export const workflowApi = {
   updateStatus: (id, status) => api.patch(`/workflows/${id}/status`, { status }),
   deleteWorkflow: (id) => api.delete(`/workflows/${id}`),
   delete: (id) => api.delete(`/workflows/${id}`),
+  getTrash: () => api.get("/workflows/trash"),
+  restoreWorkflow: (id) => api.post(`/workflows/${id}/restore`),
+  restore: (id) => api.post(`/workflows/${id}/restore`),
+  permanentDelete: (id) => api.delete(`/workflows/${id}/permanent`),
   bulkDelete: (ids) => api.post("/workflows/bulk-delete", { ids }),
   importWorkflows: (workflows) => api.post("/workflows/import", { workflows }),
   duplicateWorkflow: (id, workflowName) => api.post(`/workflows/${id}/duplicate`, { workflowName }),
-  exportAll: () => api.get("/workflows/export"),
+  exportAll: () => api.get("/workflows/export-all"),
+  exportAllWorkflows: () => api.get("/workflows/export-all"),
 
   // Workflow Detection & Validation
   detectWorkflow: (requirement, projectName = "sample-flow") =>
@@ -143,6 +148,8 @@ export const authApi = {
   googleAuth: (googleData) => api.post("/auth/google", googleData),
   getProfile: (email) => api.get("/auth/profile", { params: { email } }),
   updateProfile: (profileData) => api.put("/auth/profile", profileData),
+  changePassword: (data) => api.post("/auth/change-password", data),
+  deleteAccount: (data) => api.post("/auth/delete-account", data),
   getMe: () => api.get("/auth/me"),
   logout: () => {
     try {

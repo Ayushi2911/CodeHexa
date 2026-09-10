@@ -220,4 +220,36 @@ describe("Auth Controller Unit Tests", () => {
     assert.strictEqual(res.body.user.gender, "Female");
     assert.strictEqual(res.body.user.location, "Pune");
   });
+
+  it("should change user password via changePassword", async () => {
+    const req = {
+      app: { locals: { dbConnected: false } },
+      body: {
+        email: "test.user@example.com",
+        currentPassword: "secretPassword123",
+        newPassword: "BrandNewSecurePassword456!",
+      },
+    };
+    const res = createMockRes();
+
+    await authController.changePassword(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(res.body.message, "Password successfully changed.");
+  });
+
+  it("should delete user account via deleteAccount", async () => {
+    const req = {
+      app: { locals: { dbConnected: false } },
+      body: {
+        email: "test.user@example.com",
+      },
+    };
+    const res = createMockRes();
+
+    await authController.deleteAccount(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(res.body.message, "Account successfully deleted.");
+  });
 });

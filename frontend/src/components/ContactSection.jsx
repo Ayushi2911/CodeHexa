@@ -1,16 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-function ContactSection() {
+function ContactSection({ focusSection = null }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    category: "general",
+    category: focusSection === "form" ? "support" : "general",
     subject: "",
     message: "",
   });
 
   const [status, setStatus] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (focusSection === "form") {
+      const el = document.getElementById("contact-name");
+      if (el) {
+        el.focus();
+      }
+    }
+  }, [focusSection]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -95,7 +104,7 @@ function ContactSection() {
           </div>
         </div>
 
-        <div className="contact-form-container">
+        <div className="contact-form-container" id="contact-form">
           <form className="contact-form" onSubmit={handleSubmit}>
             <h3>Send a Message</h3>
 

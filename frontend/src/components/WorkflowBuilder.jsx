@@ -27,6 +27,7 @@ function WorkflowBuilder({
   prefillWorkflow = null,
   onWorkflowChange,
   onNewWorkflowCreated,
+  onRequestDelete,
 }) {
   const { isGuest, requireAuth, openRegister } = useAuth();
   // Input states
@@ -864,13 +865,25 @@ function WorkflowBuilder({
                       </div>
                     </div>
 
-                    <button
-                      className="primary-btn open-workflow-cta"
-                      onClick={() => openWorkflowInStudio(wf, idx)}
-                      type="button"
-                    >
-                      ✦ Open Workflow →
-                    </button>
+                    <div className="card-actions-row-bottom">
+                      <button
+                        className="primary-btn open-workflow-cta"
+                        onClick={() => openWorkflowInStudio(wf, idx)}
+                        type="button"
+                      >
+                        ✦ Open Workflow →
+                      </button>
+                      {onRequestDelete && (
+                        <button
+                          className="card-delete-workflow-btn"
+                          onClick={() => onRequestDelete(wf)}
+                          type="button"
+                          title="Delete this workflow"
+                        >
+                          🗑️ Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -930,13 +943,25 @@ function WorkflowBuilder({
                       </div>
                     </div>
 
-                    <button
-                      className="primary-btn open-workflow-cta"
-                      onClick={() => openWorkflowInStudio(wf, idx)}
-                      type="button"
-                    >
-                      ✦ Open Workflow →
-                    </button>
+                    <div className="card-actions-row">
+                      <button
+                        className="primary-btn open-workflow-cta"
+                        onClick={() => openWorkflowInStudio(wf, idx)}
+                        type="button"
+                      >
+                        ✦ Open Workflow →
+                      </button>
+                      {onRequestDelete && (
+                        <button
+                          className="card-delete-workflow-btn"
+                          onClick={() => onRequestDelete(wf)}
+                          type="button"
+                          title="Delete this workflow"
+                        >
+                          🗑️ Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1130,6 +1155,18 @@ function WorkflowBuilder({
               >
                 {isManualEditMode ? "✓ Done Editing" : "✏️ Edit Workflow"}
               </button>
+
+              {onRequestDelete && (
+                <button
+                  className="studio-delete-btn"
+                  onClick={() => onRequestDelete(workflow)}
+                  disabled={isExecuting}
+                  type="button"
+                  title="Delete this workflow"
+                >
+                  🗑️ Delete
+                </button>
+              )}
             </div>
           </div>
 

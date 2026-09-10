@@ -681,3 +681,71 @@ exports.updateProfile = async (req, res) => {
 exports.getMe = async (req, res) => {
   return res.json({ ok: true, message: "Authenticated session." });
 };
+
+/**
+ * Change user password
+ */
+exports.changePassword = async (req, res) => {
+  try {
+    const { email, currentPassword, newPassword } = req.body || {};
+    const targetEmail = (email || "").trim().toLowerCase();
+
+    if (!targetEmail) {
+      return res.status(400).json({ ok: false, error: "User email is required." });
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ ok: false, error: "New password must be at least 6 characters long." });
+    }
+
+    if (req.app.locals.dbConnected) {
+      const user = await User.findOne({ email: targetEmail });
+      if (user) {
+        if (user.authProvider === "local" && user.password && currentPassword) {
+          if (user.password !== currentPassword) {
+            return res.status(401).json({ ok: false, error: "Current password does not match." });
+          }
+        }
+        user.password = newPassword;
+        await user.save();
+        return res.json({ ok: true, message: "Password successfully changed." });
+      }
+    }
+
+    const memUser = inMemoryUsers.get(targetEmail);
+    if (memUser) {
+      if (memUser.password && currentPassword && memUser.password !== currentPassword) {
+        return res.status(401).json({ ok: false, error: "Current password does not match." });
+      }
+      memUser.password = newPassword;
+      inMemoryUsers.set(targetEmail, memUser);
+      return res.json({ ok: true, message: "Password successfully changed." });
+    }
+
+    return res.status(404).json({ ok: false, error: "User not found." });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message });
+  }
+};
+
+/**
+ * Delete user account
+ */
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    const targetEmail = (email || "").trim().toLowerCase();
+
+    if (!targetEmail) {
+      return res.status(400).json({ ok: false, error: "User email is required to delete account." });
+    }
+
+    if (req.app.locals.dbConnected) {
+      await User.findOneAndDelete({ email: targetEmail });
+    }
+
+    inMemoryUsers.delete(targetEmail);
+    return res.json({ ok: true, message: "Account successfully deleted." });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message });
+  }
+};

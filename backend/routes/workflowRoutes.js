@@ -25,6 +25,8 @@ router.get("/recent-workflows", controller.getRecent);
 router.get("/history", controller.getHistory);
 router.post("/history", controller.saveHistory);
 router.get("/export", controller.exportWorkflow);
+router.get("/export-all", controller.exportAllWorkflows);
+router.get("/trash", controller.getTrash);
 
 // AI & Bedrock Model Tests
 router.post("/llm/test", controller.testLLM);
@@ -40,6 +42,8 @@ router.post("/trigger/:id", controller.trigger);
 router.post("/:id/trigger", controller.trigger);
 
 // Single Workflow Operations & Status Updates
+router.post("/:id/restore", controller.restoreWorkflow);
+router.delete("/:id/permanent", controller.permanentDelete);
 router.get("/:id", controller.getById);
 router.put("/:id", controller.update);
 router.patch("/:id", controller.update);
