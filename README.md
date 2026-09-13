@@ -1,4 +1,5 @@
 # CodeHexa Flow ✦
+
 ### Intelligent Prompt-to-Executable Workflow Automation Platform
 
 > **Transform natural-language business requirements into context-aware, validated, editable, executable, and observable workflow graphs.**
@@ -7,189 +8,440 @@
 
 ## 📌 Overview
 
-**CodeHexa Flow** is an enterprise-grade workflow generation and orchestration system. Unlike traditional diagram tools that generate static pictures or flowchart mockups, CodeHexa Flow bridges the gap between natural-language business requirements and actual executable code.
+**CodeHexa Flow** is an intelligent workflow generation and orchestration platform that converts natural-language business requirements into structured and executable workflow graphs.
 
-It analyzes requirement text against real project context (database schemas, custom cloud functions, form operations, and runtime rules), detects single or multi-chain workflows, resolves missing capabilities, validates Directed Acyclic Graph (DAG) integrity, allows human-in-the-loop AI and manual modifications, publishes versioned workflows, and executes them with live condition evaluation and audit traces.
+Instead of creating only static flowcharts, CodeHexa Flow analyzes a user's requirement, identifies workflow steps, conditions, dependencies, and actions, and presents them through an interactive workflow studio.
 
----
+Users can review and modify generated workflows, validate their structure, test execution conditions, publish workflow versions, and observe execution results.
 
-## 🎯 What CodeHexa Flow Actually Does
-
-1. **Natural-Language Understanding**: Interprets plain English business logic (e.g. *"When an order is placed, notify the vendor, create an invoice, update inventory, then send a confirmation to the customer."*).
-2. **Context-Aware Action Resolution**: Matches requested steps to existing project functions (`NotifyVendorOnOrder`), schemas (`invoices`), and database operations (`inventory`). If an action does not exist (e.g. *"Fraud Verification"*), it flags it for human review rather than fabricating fake APIs.
-3. **Multi-Process Disambiguation**: Intelligently separates independent business processes into distinct, modular workflows (e.g. `OrderPlaced` vs `OrderCancelled`).
-4. **Structural DAG Validation**: Verifies unique step IDs, supported trigger types, schema references, input mapping dependencies, and cycle-free graph topologies before execution.
-5. **Interactive Visual Studio**: Renders glowing flowchart diagrams where steps can be inspected, edited, or re-routed.
-6. **Dynamic Context Passing**: Shows how step outputs dynamically feed subsequent step inputs (e.g. `amount = {{trigger.totalAmount}}`, `vendor_id = {{step-001.vendorId}}`).
-7. **Conditional Execution**: Evaluates runtime conditions (e.g. `{{trigger.stock_type}} == "physical"`). If true, executes the step; if false, skips the step (amber badge) and continues down the configured graph path.
-8. **AI Agent Workflow Editor (Human-in-the-Loop)**: Enables users to request modifications in natural language (e.g. *"Add an approval step before Send Confirmation"*). The AI proposes a structured before/after diff that requires explicit user approval before updating the draft.
-9. **Draft-First & Versioned Publishing**: Supports `DRAFT` ➔ `VALIDATED` ➔ `PUBLISHED` states with automatic version incrementing (`v1.0`, `v2.0`).
-10. **Live Execution & Observability**: Sequentially pulses through nodes (running spinner ➔ green checkmark), records execution duration in milliseconds, and persists detailed run history traces.
+The platform follows a **human-in-the-loop approach**, where AI assists with workflow generation and modification while the user remains in control of final changes.
 
 ---
 
-## 🔄 The Complete Processing Lifecycle
+## 🎯 What CodeHexa Flow Does
 
+1. **Natural-Language Understanding**
+   Interprets plain-English business requirements and converts them into structured workflow logic.
+
+2. **Context-Aware Action Resolution**
+   Matches requested workflow actions with available project functions, schemas, and database operations.
+
+3. **Multi-Workflow Detection**
+   Identifies and separates independent processes when a requirement contains multiple business workflows.
+
+4. **Workflow Validation**
+   Checks workflow structure, step IDs, dependencies, mappings, and graph integrity before execution.
+
+5. **Interactive Workflow Visualization**
+   Converts generated workflow data into an editable visual flowchart.
+
+6. **Dynamic Context Passing**
+   Shows how values from triggers and previous steps can be passed into subsequent workflow steps.
+
+7. **Conditional Execution**
+   Supports conditions that determine whether individual workflow steps should execute or be skipped.
+
+8. **AI-Assisted Workflow Modification**
+   Allows users to request workflow changes using natural language while keeping the user in control of the final modification.
+
+9. **Draft-First Workflow Management**
+   Workflows can be created, reviewed, validated, and published through controlled states.
+
+10. **Workflow Execution & Observability**
+    Provides runtime execution states, step-level results, execution duration, and run history.
+
+11. **Data Export**
+    Allows users to export relevant workflow/application data for external use and record keeping.
+
+---
+
+## 🔄 Complete CodeHexa Flow Lifecycle
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     THE CODEHEXA FLOW LIFECYCLE                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. DESCRIBE   ➔ Enter project and natural-language business intent.        │
+│  2. DETECT     ➔ Analyze the requirement and identify workflow(s).          │
+│  3. RESOLVE    ➔ Match actions with available project context.              │
+│  4. VALIDATE   ➔ Check dependencies, mappings, graph structure & rules.     │
+│  5. VISUALIZE  ➔ Generate an interactive workflow diagram.                  │
+│  6. EDIT       ➔ Modify workflow steps manually or with AI assistance.      │
+│  7. APPROVE    ➔ Review AI-proposed workflow changes.                       │
+│  8. PUBLISH    ➔ Publish a validated workflow version.                      │
+│  9. EXECUTE    ➔ Run the workflow with runtime condition evaluation.        │
+│ 10. OBSERVE    ➔ Review execution status, timing and run history.           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
- ┌─────────────────────────────────────────────────────────────────────────────┐
- │  THE 10-STAGE CODEHEXA FLOW LIFECYCLE                                       │
- ├─────────────────────────────────────────────────────────────────────────────┤
- │                                                                             │
- │  1. DESCRIBE   ➔ User enters project name & plain-text business intent.     │
- │  2. DETECT     ➔ Engine loads project context and detects 1 or N workflows. │
- │  3. RESOLVE    ➔ Flags missing capabilities with suggestions (Review State).│
- │  4. VALIDATE   ➔ Verifies graph integrity, cycle detection, & mapping keys. │
- │  5. VISUALIZE  ➔ Interactive flowchart canvas with glowing connectors.      │
- │  6. EDIT       ➔ Manual inspector configuration & node customization.       │
- │  7. APPROVE    ➔ AI agent proposes diffs; user stays in control.           │
- │  8. PUBLISH    ➔ Promotes draft to versioned live production status.        │
- │  9. EXECUTE    ➔ Real runtime evaluation with conditional branching.        │
- │ 10. OBSERVE    ➔ Step-by-step execution traces, latency, & run logs.        │
- └─────────────────────────────────────────────────────────────────────────────┘
+
+---
+
+# 🚀 Key Features
+
+## ✦ Authentication & Guest Mode
+
+CodeHexa Flow supports both authenticated and guest experiences.
+
+### Guest Mode
+
+Unauthenticated users can explore the public-facing application experience and are prompted to authenticate when attempting to access protected workflow functionality.
+
+### Authentication
+
+* Google Sign-In
+* Email/password registration
+* User profile provisioning
+* Session state management
+* Login and registration modal
+* Protected workflow-generation actions
+
+### User Session
+
+When logged in, users can access their profile and application settings through the authenticated interface.
+
+---
+
+## ✦ Intelligent Workflow Generator
+
+The **Workflow Generator** is the core functionality of CodeHexa Flow.
+
+It:
+
+* Accepts natural-language business requirements.
+* Detects workflow intent.
+* Identifies triggers and actions.
+* Detects conditions and dependencies.
+* Supports multiple workflow chains.
+* Produces structured workflow data.
+* Provides validation information.
+* Handles incomplete or vague requirements with guidance.
+* Provides an improved and more reliable workflow-generation experience.
+
+---
+
+## ✦ Interactive Workflow Studio
+
+Generated workflows are displayed in an interactive visual editor.
+
+Users can:
+
+* View workflow steps.
+* Inspect individual nodes.
+* Edit workflow properties.
+* Change step configurations.
+* Modify conditions.
+* Review input/output mappings.
+* Re-route workflow connections.
+* Synchronize diagram changes with workflow data.
+
+### Supported Node Types
+
+* `TRIGGER`
+* `FUNCTION`
+* `FORM CREATE`
+* `OPERATION`
+* `APPROVAL GATE`
+
+---
+
+## ✦ AI Workflow Editor
+
+CodeHexa Flow follows a **Human-in-the-Loop** workflow modification model.
+
+For example:
+
+> "Add an approval step before Send Confirmation."
+
+The system can propose the modification for the user to review before applying it.
+
+### Principle
+
+```text
+AI proposes
+     ↓
+User reviews
+     ↓
+User approves
+     ↓
+Workflow is updated
 ```
 
----
-
-## 🚀 Key Features
-
-
-### ✦ Authentication & Guest Mode Protection
-- **Guest Mode Browsing**: Unauthenticated visitors can freely explore the landing page, templates, documentation, features, interactive demo, and contact form.
-- **Workflow Generation Interceptor**: When a guest clicks "Generate Workflow", "Start Building", or "Use This Template", an interactive login/registration modal appears.
-- **Google Sign-In & Email/Password Auth**:
-  - One-click Google authentication with automated profile provisioning.
-  - Custom Registration with **Full Name**, **Gmail/Email**, **Password**, **Country**, and **City/Location**.
-  - Immediate resumption: Automatically resumes workflow generation upon successful authentication without losing input.
-- **Navbar Profile Badge & Session State**:
-  - Guest state displays `● Guest Mode` with dedicated `Log In` and `Sign Up` action buttons.
-  - Logged-in state displays custom user avatar with name, location tag, and `Log Out` button.
-
-### ✦ Intelligent Workflow Generator
-- Fast animated 8-step reasoning HUD displaying active context matching.
-- Multi-workflow card overview with confidence scores, validation indicators, and trigger badges.
-- Recoverable guidance states for vague or underspecified business prompts.
-
-### ✦ Visual Workflow Flowchart & Inspector
-- Color-coded node badges: `TRIGGER`, `FUNCTION`, `FORM CREATE`, `OPERATION`, `APPROVAL GATE`.
-- Context Passing Panel: Luminous code highlights indicating parameters reused across steps.
-- Real-time diagram sync: Editing fields immediately updates the diagram without page refresh.
-
-### ✦ AI Agent Workflow Editor (Human-in-the-Loop)
-- Enter prompt: *"Add an approval step before Send Confirmation"*.
-- Displays interactive Before/After Diff comparison card.
-- Core Principle: **AI proposes. User approves.**
-
-### ✦ Condition-Aware Runtime Execution
-- Live Test Payload JSON editor (e.g. test with `stock_type: "physical"` vs `stock_type: "digital"`).
-- Interactive execution pulses:
-  - ⏳ **Running**: Blue/cyan glowing border with animated spinner.
-  - ✓ **Success**: Glowing emerald green card with checkmark.
-  - ⚠️ **Skipped**: Amber badge when condition evaluates to false.
-  - ✕ **Failed**: Red card with error diagnostics.
-
-### ✦ High-Fidelity "See It in Action" Demo Simulator
-- Continuous interactive screen recording experience with moving cursor, smooth typing, button click ripples, interactive timeline scrubber, speed toggles (`1x`, `1.5x`, `2x`), and native **Fullscreen** mode.
+This keeps the user in control of AI-assisted workflow changes.
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## ✦ Workflow Validation
 
-### Frontend
-- **Framework**: React 18 with Vite
-- **Styling**: Pure Modern CSS (Glassmorphism, Dark/Light Theme, Responsive Flex/Grid, Zero Layout Shifts)
-- **State Management**: Reactive state hooks with zero-flicker synchronization
-- **Performance**: GPU-accelerated CSS animations (`opacity`, `transform`) compliant with `prefers-reduced-motion`
+Before execution or publishing, workflows can be validated against structural rules.
 
-### Backend
-- **Runtime**: Node.js with Express.js
-- **Database**: MongoDB with Mongoose (with offline in-memory fallback support)
-- **AI Engine**: AWS Bedrock with Qwen LLM integration + Deterministic Rule-Based Fallback Parser
-- **Testing**: Native Node.js test runner (`node --test`)
+Validation includes:
+
+* Unique step IDs
+* Valid trigger types
+* Supported node types
+* Dependency checks
+* Input mapping validation
+* Schema references
+* Graph integrity
+* Cycle detection
+* Condition configuration
+
+This helps prevent invalid workflow structures from being executed.
 
 ---
 
-## 📁 Repository Structure
+## ✦ Condition-Aware Runtime Execution
 
+CodeHexa Flow supports runtime conditions.
+
+For example:
+
+```text
+stock_type == "physical"
 ```
+
+If the condition evaluates to **true**, the associated step executes.
+
+If the condition evaluates to **false**, the step is skipped and execution continues according to the configured workflow path.
+
+### Runtime States
+
+* ⏳ **Running**
+* ✓ **Success**
+* ⚠️ **Skipped**
+* ✕ **Failed**
+
+Execution results can include step-level status and timing information.
+
+---
+
+## ✦ Workflow History & Observability
+
+Workflow execution information can be recorded for later review.
+
+Users can inspect:
+
+* Previous workflow runs
+* Step execution status
+* Execution duration
+* Successful steps
+* Skipped steps
+* Failed steps
+* Runtime traces
+
+This provides visibility into workflow execution and helps users understand what happened during each run.
+
+---
+
+## ✦ Export Data
+
+CodeHexa Flow includes an **Export Data** capability that allows users to export relevant application and workflow data.
+
+This can be used to:
+
+* Keep external records.
+* Share workflow information.
+* Maintain backups.
+* Use exported information outside the application.
+
+---
+
+# ⚙️ Settings
+
+A dedicated **Settings** page has been added to organize application and user-related options in one place.
+
+The Settings section provides access to relevant controls without overcrowding the primary workflow navigation.
+
+### Settings provides access to:
+
+* User and application settings
+* About
+* Contact
+* Help
+* Data export
+* Other available application controls
+
+The informational sections have been moved away from the primary workflow navigation so that the main interface remains focused on the core workflow experience.
+
+---
+
+# 🎨 UI/UX Improvements
+
+The latest version includes several improvements to the overall application interface and user experience.
+
+### Improvements include:
+
+* Dedicated Settings page
+* Cleaner navigation structure
+* Reduced main-navigation clutter
+* Improved spacing and alignment
+* Better workflow editor presentation
+* Improved cards and panels
+* Dark/light theme support
+* Better visual hierarchy
+* Improved workflow interaction
+* Responsive layouts
+* Smoother animations and transitions
+* More consistent buttons and controls
+* Improved overall application polish
+
+The interface follows a modern SaaS-style design with workflow-focused visual elements, responsive layouts, and a consistent application theme.
+
+---
+
+# 🧭 Application Structure
+
+The application is centered around the workflow-building experience.
+
+### Main Workflow Flow
+
+```text
+Home
+  ↓
+Workflow
+  ↓
+Workflow Studio
+  ↓
+Validate
+  ↓
+Publish
+  ↓
+Execute
+  ↓
+History / Observability
+```
+
+Additional informational and account-related sections are accessible through **Settings**, keeping the primary navigation focused on workflow operations.
+
+---
+
+# 🛠️ Tech Stack & Architecture
+
+## Frontend
+
+* **Framework:** React 18
+* **Build Tool:** Vite
+* **Styling:** Modern CSS
+* **UI:** Responsive Flexbox/Grid layouts
+* **Theme:** Dark/Light mode
+* **State Management:** React Hooks
+* **Animations:** GPU-friendly CSS animations
+* **Workflow Visualization:** Interactive React-based workflow components
+
+## Backend
+
+* **Runtime:** Node.js
+* **Framework:** Express.js
+* **Database:** MongoDB with Mongoose
+* **Offline Support:** In-memory fallback
+* **AI Engine:** AWS Bedrock with Qwen LLM integration
+* **Fallback:** Deterministic rule-based workflow parser
+* **Testing:** Native Node.js test runner
+
+---
+
+# 📁 Repository Structure
+
+```text
 CodeHexa-master/
+│
 ├── backend/
 │   ├── config/
-│   │   └── database.js               # MongoDB connection & offline handler
+│   │   └── database.js
+│   │
 │   ├── controllers/
-│   │   └── workflowController.js     # Detect, validate, & execute API handlers
+│   │   └── workflowController.js
+│   │
 │   ├── engine/
-│   │   ├── bedrockClient.js          # AWS Bedrock LLM client & prompt templates
-│   │   ├── deterministicDetector.js  # Heuristic offline intent parser
-│   │   ├── workflowExecutor.js       # Runtime executor & condition evaluator
-│   │   └── workflowValidator.js      # Static DAG analysis & cycle checks
+│   │   ├── bedrockClient.js
+│   │   ├── deterministicDetector.js
+│   │   ├── workflowExecutor.js
+│   │   └── workflowValidator.js
+│   │
 │   ├── routes/
-│   │   └── workflowRoutes.js         # Express REST API routes
+│   │   └── workflowRoutes.js
+│   │
 │   ├── tests/
-│   │   ├── api.test.js               # API integration tests
-│   │   └── engine.test.js            # Unit tests for DAG & condition resolution
-│   ├── server.js                     # Express server entry point
+│   │   ├── api.test.js
+│   │   └── engine.test.js
+│   │
+│   ├── server.js
 │   └── package.json
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── agent/                # AI Agent diff & command components
-│   │   │   ├── editor/               # Step inspector, mapping & condition editors
-│   │   │   ├── execution/            # Runtime status, test payloads & run logs
-│   │   │   ├── workflow/             # Flowchart diagram & node components
-│   │   │   ├── AboutSection.jsx      # Architecture & platform overview
-│   │   │   ├── ContactSection.jsx    # Developer support & inquiry form
-│   │   │   ├── DemoVideoSection.jsx  # Interactive SaaS simulator with fullscreen
-│   │   │   ├── HelpSection.jsx       # FAQs & documentation quickstart
-│   │   │   ├── Hero.jsx              # Landing header & CTA
-│   │   │   ├── Navbar.jsx            # Fixed navigation with smooth offset scrolling
-│   │   │   ├── WorkflowBuilder.jsx   # Complete studio, generator & editor
-│   │   │   ├── WorkflowInspector.jsx # Side panel for node inspection
-│   │   │   └── WorkflowJsonPanel.jsx # Raw JSON schema preview & download
+│   │   │   ├── agent/
+│   │   │   ├── editor/
+│   │   │   ├── execution/
+│   │   │   ├── workflow/
+│   │   │   ├── auth/
+│   │   │   ├── AboutSection.jsx
+│   │   │   ├── ContactSection.jsx
+│   │   │   ├── HelpSection.jsx
+│   │   │   ├── DemoVideoSection.jsx
+│   │   │   ├── Hero.jsx
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── Settings.jsx
+│   │   │   ├── WorkflowBuilder.jsx
+│   │   │   ├── WorkflowInspector.jsx
+│   │   │   └── WorkflowJsonPanel.jsx
+│   │   │
 │   │   ├── data/
-│   │   │   └── workflowGenerator.js  # Client-side multi-workflow generator
+│   │   │   └── workflowGenerator.js
+│   │   │
 │   │   ├── services/
-│   │   │   └── api.js                # Axios REST client for backend endpoints
+│   │   │   └── api.js
+│   │   │
 │   │   ├── utils/
-│   │   │   ├── executionHistory.js   # Run trace persistence helpers
-│   │   │   ├── workflowExecutor.js   # Client-side workflow runner & pulse state
-│   │   │   ├── workflowModifier.js   # AI modification graph transform engine
-│   │   │   └── workflowValidator.js  # Client-side DAG validation rules
-│   │   ├── App.css                   # Global stylesheet with dark/light themes
-│   │   ├── App.jsx                   # Main single-page application layout
-│   │   └── main.jsx                  # React DOM entry point
+│   │   │   ├── executionHistory.js
+│   │   │   ├── workflowExecutor.js
+│   │   │   ├── workflowModifier.js
+│   │   │   └── workflowValidator.js
+│   │   │
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   │
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
+│
 └── README.md
 ```
 
 ---
 
-## ⚡ Getting Started
+# ⚡ Getting Started
 
-### Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm**: v9.0.0 or higher
-- **MongoDB** *(Optional)*: Local MongoDB instance or MongoDB Atlas URI (built-in offline fallback is active by default).
+## Prerequisites
+
+* **Node.js:** v18.0.0 or higher
+* **npm:** v9.0.0 or higher
+* **MongoDB:** Optional — local MongoDB or MongoDB Atlas
 
 ---
 
-### Installation & Setup
+## Installation
 
-#### 1. Clone the Repository
+### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/Ayushi2911/CodeHexa.git
 cd CodeHexa-master
 ```
 
-#### 2. Backend Setup
+### 2. Backend Setup
+
 ```bash
 cd backend
 npm install
 ```
 
-Create a `.env` file in `backend/` (optional):
+Create a `.env` file inside `backend/` if required:
+
 ```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/codehexa
@@ -198,82 +450,191 @@ AWS_ACCESS_KEY_ID=your_access_key_id
 AWS_SECRET_ACCESS_KEY=your_secret_access_key
 ```
 
-Start the backend server:
+Start the backend:
+
 ```bash
 npm start
-# Server starts on http://localhost:5000
 ```
 
-#### 3. Frontend Setup
-In a new terminal window:
+Backend:
+
+```text
+http://localhost:5000
+```
+
+### 3. Frontend Setup
+
+Open another terminal:
+
 ```bash
 cd frontend
 npm install
 npm run dev
-# Vite dev server starts on http://localhost:5173
 ```
 
-Open **`http://localhost:5173`** in your browser to use CodeHexa Flow.
+Frontend:
+
+```text
+http://localhost:5173
+```
 
 ---
 
-## 🧪 Running Tests
+# 🧪 Testing
 
-### Backend Unit & Integration Tests
+## Backend Tests
+
 ```bash
 cd backend
 npm test
 ```
-*Executes all 7 automated unit & integration test suites (workflow detection, DAG validation, input mapping interpolation, condition resolution, and multi-chain splitting).*
 
-### Frontend Production Build Test
+Tests cover workflow-related functionality including:
+
+* Workflow detection
+* DAG validation
+* Input mapping
+* Condition resolution
+* Multi-workflow splitting
+* API behavior
+
+## Frontend Production Build
+
 ```bash
 cd frontend
 npm run build
 ```
-*Validates that all React components, CSS bundles, and assets compile with 0 errors.*
+
+This verifies that the React/Vite application builds successfully.
 
 ---
 
-## 📡 REST API Reference
+# 📡 REST API
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/v1/workflows/detect` | Analyzes natural-language requirement and returns detected workflow graph(s). |
-| `POST` | `/api/v1/workflows/validate` | Performs static DAG validation, checking cycles, schema references, and input mappings. |
-| `POST` | `/api/v1/workflows/execute` | Executes a workflow against a runtime payload with condition evaluation. |
-| `GET` | `/api/v1/workflows/templates` | Retrieves starter enterprise workflow templates. |
-| `GET` | `/api/v1/workflows/health` | Health check endpoint for database and LLM service status. |
-
----
-
-## 💡 Example Workflows
-
-### 1. Order Processing (`OrderPlaced`)
-- **Trigger**: Order Placed (`orders.created`)
-- **Steps**:
-  1. `Notify Vendor` (Function: `NotifyVendorOnOrder`)
-  2. `Create Invoice` (Form Create: `invoices.insert`)
-  3. `Update Inventory` (Operation: `inventory.deduct` | *Condition: `stock_type == "physical"`*)
-  4. `Send Confirmation` (Function: `SendOrderConfirmation`)
-
-### 2. Complaint Processing (`ComplaintReceived` - PS11)
-- **Trigger**: Complaint Received (`crm_portal`)
-- **Steps**:
-  1. `Log Complaint` (Form Create: `complaintSchema`)
-  2. `Check Anomaly & Warranty` (Function: `diagnoseComplaint`)
-  3. `Notify Customer & Resolution` (Form Create: `sendNotification`)
-
-### 3. Job Application Flow (`JobApplication`)
-- **Trigger**: Application Submitted (`careers_portal`)
-- **Steps**:
-  1. `Screen Resume & Report Applicant` (Form Create: `applicationSchema`)
-  2. `Interview & Offer Negotiation` (Function: `conductInterview`)
-  3. `Probation Performance Review` (Function: `reviewProbation`)
+| Method | Endpoint                      | Description                                                  |
+| ------ | ----------------------------- | ------------------------------------------------------------ |
+| `POST` | `/api/v1/workflows/detect`    | Detects workflow graph(s) from natural-language requirements |
+| `POST` | `/api/v1/workflows/validate`  | Validates workflow structure                                 |
+| `POST` | `/api/v1/workflows/execute`   | Executes a workflow with runtime conditions                  |
+| `GET`  | `/api/v1/workflows/templates` | Retrieves workflow templates                                 |
+| `GET`  | `/api/v1/workflows/health`    | Checks backend/database/AI service status                    |
 
 ---
 
-## 👥 Contributors & Credits
-- **Project**: CodeHexa Flow
-- **Developed by**: College Students
-- **Repository**: [CodeHexa on GitHub](https://github.com/Ayushi2911/CodeHexa)
+# 💡 Example Workflows
+
+## 1. Order Processing
+
+**Trigger:** Order Placed (`orders.created`)
+
+```text
+Order Placed
+     ↓
+Notify Vendor
+     ↓
+Create Invoice
+     ↓
+Update Inventory
+     ↓
+Send Confirmation
+```
+
+Conditional inventory handling can be applied based on the order type.
+
+---
+
+## 2. Complaint Processing
+
+**Trigger:** Complaint Received (`crm_portal`)
+
+```text
+Complaint Received
+        ↓
+Log Complaint
+        ↓
+Check Anomaly & Warranty
+        ↓
+Notify Customer
+        ↓
+Resolution
+```
+
+---
+
+## 3. Job Application Flow
+
+**Trigger:** Application Submitted (`careers_portal`)
+
+```text
+Application Submitted
+        ↓
+Screen Resume
+        ↓
+Interview
+        ↓
+Offer Negotiation
+        ↓
+Probation Review
+```
+
+---
+
+# 🔐 Human-in-the-Loop Philosophy
+
+CodeHexa Flow is designed around the principle:
+
+> **AI assists. Humans decide.**
+
+AI helps understand requirements and propose workflow modifications, while users retain control over important workflow changes.
+
+This approach combines automation with human review and transparency.
+
+---
+
+# 📊 Core Value Proposition
+
+Traditional workflow tools often focus on manually creating diagrams.
+
+CodeHexa Flow aims to provide a complete workflow lifecycle:
+
+```text
+Natural Language
+       ↓
+Workflow Detection
+       ↓
+Context Resolution
+       ↓
+Validation
+       ↓
+Visual Editing
+       ↓
+Human Approval
+       ↓
+Publishing
+       ↓
+Execution
+       ↓
+Monitoring
+       ↓
+Export / History
+```
+
+The goal is to move from **"drawing a workflow"** to **"understanding, validating, managing, and executing a workflow."**
+
+---
+
+# 👥 Contributors & Credits
+
+* **Project:** CodeHexa Flow
+* **Problem Statement:** SIH 2026 PS11 – Business Workflow Detection and Diagram Generation
+* **Team:** CodeHexa
+* **Team ID:** T14
+* **Developed by:** College Student Team
+
+---
+
+# ✦ CodeHexa Flow
+
+**Describe → Detect → Resolve → Validate → Edit → Approve → Publish → Execute → Observe**
+
+> **From business language to executable workflow.**
